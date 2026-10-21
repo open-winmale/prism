@@ -10,9 +10,15 @@ import type { WmCredentials } from './types';
 // 会消耗真实 EC，CI 里绝不执行。
 
 const ENABLED = process.env.WM_E2E === '1';
-const CLIENT_ID = process.env.WINMALE_CLIENT_ID ?? '';
-const CLIENT_SECRET = process.env.WINMALE_CLIENT_SECRET ?? process.env.WINMALE_API_KEY ?? '';
-const API_BASE = process.env.WINMALE_API_BASE ?? 'https://api.winmale.com';
+// 凭证来源（兼容两套命名）：script.env 的 OPEN_PLATFORM_* 或 skillhub 的 WINMALE_*，默认直连 api.winmale.com
+const CLIENT_ID = process.env.WINMALE_CLIENT_ID ?? process.env.OPEN_PLATFORM_CLIENT_ID ?? '';
+const CLIENT_SECRET =
+  process.env.WINMALE_CLIENT_SECRET ??
+  process.env.WINMALE_API_KEY ??
+  process.env.OPEN_PLATFORM_CLIENT_SECRET ??
+  '';
+const API_BASE =
+  process.env.WINMALE_API_BASE ?? process.env.OPEN_PLATFORM_BASE_URL ?? 'https://api.winmale.com';
 
 const CREDS: WmCredentials = { clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, apiBase: API_BASE };
 
