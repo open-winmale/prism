@@ -11,6 +11,8 @@ import { createProvider, type DataProvider } from '@/data/provider';
 const proUrl = import.meta.env.VITE_PRO_URL || 'https://winmale.com';
 const envAppId = import.meta.env.VITE_WINMALE_OPEN_APPID || '';
 const envBase = import.meta.env.VITE_WINMALE_OPEN_BASE || 'https://open.winmale.com';
+// 引流归因：开源版所有指向专业版的 CTA 统一带 utm_source
+const proUrlUtm = `${proUrl}?utm_source=report-lens&utm_medium=github`;
 
 // Hero 报告的数据源模块（不在菜单中平铺，由 ReportHero 聚合渲染）
 const HERO_SOURCE_IDS = new Set(['mineDetect', 'qualityCheck', 'cashFlowQuality']);
@@ -115,7 +117,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     appId,
     base,
-    proUrl,
+    proUrl: proUrlUtm,
     provider,
     usingRealData,
     stockList,

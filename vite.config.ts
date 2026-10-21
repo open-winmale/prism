@@ -5,6 +5,9 @@ import unocss from 'unocss/vite';
 
 export default defineConfig({
   plugins: [vue(), unocss()],
+  // GitHub Pages 子路径部署（open-winmale/report-lens → /report-lens/）；
+  // 本地 dev / 自定义域名时可用 .env 覆盖为 '/'
+  base: process.env.VITE_BASE_PATH || '/report-lens/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
