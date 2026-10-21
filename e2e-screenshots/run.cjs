@@ -41,6 +41,9 @@ const VIEWPORTS = [
     ok('真实公司卡片：五粮液', (await page.locator('button:has-text("五粮液")').count()) > 0);
     ok('真实公司卡片：泸州老窖', (await page.locator('button:has-text("泸州老窖")').count()) > 0);
     ok('制造对照不在首页', (await page.locator('button:has-text("制造")').count()) === 0);
+    // 精选模式：首页不平铺全行业（汾酒/洋河等通过搜索接口按需查）
+    ok('首页精选不平铺全行业', (await page.locator('button:has-text("山西汾酒")').count()) === 0);
+    ok('首页有搜索框', (await page.locator('input[type=search]').count()) > 0);
     await page.screenshot({ path: `${OUT}/01-home.png`, fullPage: true });
 
     // ── 2. 点公司卡片直达报告（URL 带 symbol）──

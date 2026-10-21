@@ -136,25 +136,22 @@ export class LiveProvider implements DataProvider {
   }
 
   async list(): Promise<SymbolBrief[]> {
-    try {
-      const pool = await this.liquorPool();
-      // 退市标的（如 600696 退市岩石）不进默认卡片列表
-      return pool.items.filter((x) => !x.name.includes('退市'));
-    } catch {
-      // 接口不可用 → 降级内置快照清单，保证首页不空
-      return LIQUOR_SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
-    }
+    // 首页精选：只放头部几家（名字稳定，无需取数）。
+    // 全行业清单不必平铺——找其他公司走 discover 搜索接口（search）；
+    // 完整白酒池（含估值中枢）留给 M3 同业对比，需要时再调 liquorPool()。
+    return LIQUOR_SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
   }
 
   async listAll(): Promise<SymbolBrief[]> {
-    const live = await this.list();
-    const known = new Set(live.map((s) => s.symbol));
+    // 首页精选 + 内置对照样本；实时模式不再拉全行业清单（首页不需要平铺）
+    const featured = await this.list();
+    const known = new Set(featured.map((s) => s.symbol));
     const extra = SAMPLES.filter((s) => !known.has(s.symbol)).map<SymbolBrief>((s) => ({
       symbol: s.symbol,
       name: s.name,
       industry: s.industry,
     }));
-    return [...live, ...extra];
+    return [...featured, ...extra];
   }
 
   async get(symbol: string): Promise<ReportDataset> {

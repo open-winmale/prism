@@ -18,9 +18,17 @@ const HERO_SOURCE_IDS = new Set(['mineDetect', 'qualityCheck', 'cashFlowQuality'
 export const useAppStore = defineStore('app', () => {
   // ── 凭证与数据源 ──
   const credential = ref(loadCredentials());
-  const provider = ref<DataProvider>(createProvider(credential.value));
+  // provider 是带方法的类实例：不能用 ref() 包（reactive 代理会让方法调用丢 this）。
+  // 数据源身份用一个普通字符串 ref 供 UI 响应，实例本体放普通变量。
+  let providerInstance: DataProvider = createProvider(credential.value);
+  const providerKind = ref(providerInstance.kind);
   /** 'live' = 接口实时；'snapshot' = 内置快照 */
-  const dataSource = computed(() => provider.value.kind);
+  const dataSource = computed(() => providerKind.value);
+
+  function useProvider(next: DataProvider) {
+    providerInstance = next;
+    providerKind.value = next.kind;
+  }
 
   /** 应用用户填写的 AppId；传空串则清除并回到快照模式 */
   function applyCredentials(clientId: string, clientSecret: string) {
@@ -31,7 +39,7 @@ export const useAppStore = defineStore('app', () => {
       saveCredentials(clientId, clientSecret);
     }
     credential.value = loadCredentials();
-    provider.value = createProvider(credential.value);
+    useProvider(createProvider(credential.value));
   }
 
   // ── 数据状态 ──
@@ -86,7 +94,7 @@ export const useAppStore = defineStore('app', () => {
     loading.value = true;
     error.value = '';
     try {
-      stockList.value = await provider.value.list();
+      stockList.value = await providerInstance.list();
       if (stockList.value.length && !currentSymbol.value) {
         await selectStock(stockList.value[0].symbol);
       }
@@ -101,7 +109,7 @@ export const useAppStore = defineStore('app', () => {
   const extraSymbols = ref<SymbolBrief[]>([]);
   async function loadExtraSamples() {
     try {
-      const all = await provider.value.listAll();
+      const all = await providerInstance.listAll();
       const known = new Set(stockList.value.map((s) => s.symbol));
       extraSymbols.value = all.filter((s) => !known.has(s.symbol));
     } catch {
@@ -120,7 +128,7 @@ export const useAppStore = defineStore('app', () => {
     error.value = '';
     progress.value = null;
     try {
-      const res = await provider.value.getDataset(symbol, {
+      const res = await providerInstance.getDataset(symbol, {
         onProgress: (p) => {
           if (seq === selectSeq) progress.value = p;
         },
@@ -159,7 +167,7 @@ export const useAppStore = defineStore('app', () => {
     searching.value = true;
     searchTimer = setTimeout(async () => {
       try {
-        const fn = provider.value.search;
+        const fn = providerInstance.search?.bind(providerInstance);
         searchResults.value = fn ? await fn(text) : [];
       } catch {
         searchResults.value = [];
@@ -205,7 +213,6 @@ export const useAppStore = defineStore('app', () => {
   return {
     proUrl: proUrlUtm,
     credential,
-    provider,
     dataSource,
     applyCredentials,
     stockList,

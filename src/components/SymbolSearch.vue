@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/useApp';
 
 // 动态选标的：输入名称/拼音/代码 → 检索 → 直达报告。
 // 无 AppId 时检索能力不可用，此处给明确引导而不是静默失败。
 
+const router = useRouter();
 const store = useAppStore();
 const text = ref('');
 const open = ref(false);
@@ -33,6 +35,9 @@ function pick(symbol: string) {
   open.value = false;
   text.value = '';
   store.clearSearch();
+  // 首页与分析页都会挂本组件：首页需要路由跳转，分析页只换 symbol（路由 query 变化由
+  // AnalysisPage 的 watch 接住）。统一 push，同路由同 query 时 vue-router 不会触发重复导航。
+  router.push({ path: '/analyze', query: { symbol } });
   store.selectStock(symbol);
 }
 

@@ -3,8 +3,10 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/useApp';
 import CompanyPicker from './CompanyPicker.vue';
+import SymbolSearch from '@/components/SymbolSearch.vue';
 
-// 首页（DESIGN_SPEC §3.2）：行业固定白酒，去掉选行业步骤；公司卡片直达报告。
+// 首页（DESIGN_SPEC §3.2）：行业固定白酒；精选头部公司卡片直达，
+// 其他公司不平铺——走搜索接口按需查（live 模式）。
 const router = useRouter();
 const store = useAppStore();
 
@@ -40,8 +42,19 @@ function pick(symbol: string) {
       </p>
     </section>
 
+    <section class="mx-auto max-w-xl">
+      <SymbolSearch />
+      <p class="mt-1.5 text-center text-xs text-slate-400">
+        {{
+          store.dataSource === 'live'
+            ? '输入任意白酒公司名称 / 代码，实时拉取财报生成报告'
+            : '填入 AppId 后可搜索并查看任意公司（设置 → 数据源）'
+        }}
+      </p>
+    </section>
+
     <section>
-      <h2 class="mb-3 text-lg font-medium">选择一家公司，直接看体检报告</h2>
+      <h2 class="mb-3 text-lg font-medium">或从精选公司开始</h2>
       <div class="grid gap-3 sm:grid-cols-2">
         <template v-if="cards.length">
           <CompanyPicker
