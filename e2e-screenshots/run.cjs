@@ -36,19 +36,25 @@ const VIEWPORTS = [
     await page.waitForTimeout(1200);
     ok('首页标题', (await page.title()).includes('财报透视'), await page.title());
     ok('无「选择行业」步骤（M1 收窄白酒）', (await page.locator('text=公司属于哪个行业').count()) === 0);
-    ok('公司卡片出现', (await page.locator('button:has-text("演示·白酒龙头")').count()) > 0);
+    // 真实白酒三家 + 制造对照不进首页
+    ok('真实公司卡片：贵州茅台', (await page.locator('button:has-text("贵州茅台")').count()) > 0);
+    ok('真实公司卡片：五粮液', (await page.locator('button:has-text("五粮液")').count()) > 0);
+    ok('真实公司卡片：泸州老窖', (await page.locator('button:has-text("泸州老窖")').count()) > 0);
+    ok('制造对照不在首页', (await page.locator('button:has-text("制造")').count()) === 0);
     await page.screenshot({ path: `${OUT}/01-home.png`, fullPage: true });
 
     // ── 2. 点公司卡片直达报告（URL 带 symbol）──
-    await page.locator('button:has-text("演示·白酒龙头")').first().click();
+    await page.locator('button:has-text("贵州茅台")').first().click();
     await page.waitForTimeout(1500);
-    ok('URL 带 symbol 参数', page.url().includes('symbol='), page.url());
-    ok('示例数据标签（amber 强化）', (await page.locator('span:has-text("示例数据")').count()) > 0);
+    ok('URL 带 symbol 参数', page.url().includes('symbol=600519'), page.url());
+    ok('真实数据标签（emerald 强化）', (await page.locator('span:has-text("真实数据")').count()) > 0);
+    ok('公司名显示 贵州茅台', (await page.locator('text=贵州茅台').count()) > 0);
+    ok('香型标签 酱香', (await page.locator('text=酱香').count()) > 0);
 
     // ── 3. Hero 报告（白酒=安全画像，六维）──
     const verdictEl = page.locator('main, body').locator('text=/^(安全|关注|高危)$/').first();
     const verdictText = (await verdictEl.textContent().catch(() => '')) || '';
-    ok('白酒样例 verdict=安全', verdictText === '安全', `实际=${verdictText}`);
+    ok('茅台(真实数据) verdict 判定输出', ['安全', '关注', '高危'].includes(verdictText), `实际=${verdictText}`);
     ok('老唐排雷清单', (await page.locator('text=老唐排雷清单').count()) > 0);
     ok('质量体检六维（白酒）', (await page.locator('text=质量体检 · 六维构成').count()) > 0);
     ok('渠道信心检查项存在', (await page.locator('text=渠道信心').count()) > 0);
@@ -74,7 +80,7 @@ const VIEWPORTS = [
     await page.screenshot({ path: `${OUT}/04-check-expanded.png`, fullPage: false });
 
     // ── 5. 切制造样例 → verdict=高危（行业化没削弱通用能力）──
-    await page.locator('select').first().selectOption({ index: 1 });
+    await page.locator('select').first().selectOption({ index: 3 });
     await page.waitForTimeout(1500);
     const verdict2 = (await page.locator('main, body').locator('text=/^(安全|关注|高危)$/').first().textContent().catch(() => '')) || '';
     ok('制造样例 verdict=高危', verdict2 === '高危', `实际=${verdict2}`);
@@ -94,7 +100,7 @@ const VIEWPORTS = [
     for (const vp of VIEWPORTS.slice(1)) {
       const p = await browser.newPage({ viewport: vp });
       p.setDefaultTimeout(15000);
-      await p.goto(BASE + '/#/analyze?symbol=DEMO-600519', { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await p.goto(BASE + '/#/analyze?symbol=600519', { waitUntil: 'domcontentloaded', timeout: 20000 });
       await p.waitForTimeout(1500);
       // 375px 关键断言：佐证可见（未隐藏）
       if (vp.width === 375) {

@@ -1,13 +1,20 @@
 import type { ReportDataset } from '@/engine';
 import { maotaiSample } from './samples/maotai';
 import { manufacturingSample } from './samples/manufacturing';
+import { dataset as moutai } from './samples/liquor/600519';
+import { dataset as wuliangye } from './samples/liquor/000858';
+import { dataset as luzhoulaojiao } from './samples/liquor/000568';
 
-// 内置示例数据集（开箱即用、纯前端离线）
-// M1 收窄白酒：首页只展示 liquor 公司；manufacturing 保留为「行业化对照」样本（测试与对照用）
-export const SAMPLES: ReportDataset[] = [maotaiSample, manufacturingSample];
+// 内置数据集（开箱即用、纯前端离线）
+// M1：首页只展示真实白酒三家；manufacturing 保留为「行业化对照」样本（分析页下拉可切）；
+// maotaiSample（演示）不再进首页，保留给单测做优质画像回归样例。
+export const SAMPLES: ReportDataset[] = [moutai, wuliangye, luzhoulaojiao, manufacturingSample];
 
-// 首页公司卡片只展示白酒（DESIGN_SPEC §3.2：不再出现选行业步骤）
-export const LIQUOR_SAMPLES: ReportDataset[] = SAMPLES.filter((s) => s.industry === 'liquor');
+// 演示样本（仅测试用）
+export const DEMO_SAMPLES: ReportDataset[] = [maotaiSample];
+
+// 首页公司卡片只展示真实白酒（DESIGN_SPEC §3.2）
+export const LIQUOR_SAMPLES: ReportDataset[] = [moutai, wuliangye, luzhoulaojiao];
 
 export function getSample(symbol: string): ReportDataset | undefined {
   return SAMPLES.find((s) => s.symbol === symbol);
