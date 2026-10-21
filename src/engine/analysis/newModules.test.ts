@@ -85,9 +85,9 @@ describe('现金转换周期 cashConversionCycle', () => {
 });
 
 describe('排雷档案 mineChecks（Hero 数据源）', () => {
-  it('白酒样例：无高危触发，verdict=safe，9 项全部有 why 解释', () => {
+  it('白酒样例：无高危触发，verdict=safe，全部有 why 解释（9 项老唐规则 + 白酒渠道信心 = 10 项）', () => {
     const checks = mineChecks(ctx(maotaiSample));
-    expect(checks.length).toBe(9);
+    expect(checks.length).toBe(10);
     expect(mineVerdict(checks)).toBe('safe');
     for (const c of checks) expect(c.why).toBeTruthy();
   });

@@ -4,6 +4,7 @@
 
 export * from './schema/types';
 export * from './schema/industry';
+export * from './schema/verify';
 export * from './compute';
 export * from './derivations';
 export * from './utils';

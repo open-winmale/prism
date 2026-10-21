@@ -45,6 +45,10 @@ export interface PeriodMetrics {
   fcf: Num; // 自由现金流 = 经营现金流 - 资本开支
   accrual_ta: Num; // 应计利润/总资产 = (归母净利 - 经营现金流) / 总资产
   ncf_to_op_profit: Num; // 经营现金流 / 营业利润
+  // 白酒专属
+  contract_liab_ratio: Num; // 合同负债(或预收款)/营业总收入 —— 蓄水池指标
+  sales_cash_ratio: Num; // 销售商品收到现金/营业总收入 —— 收现比
+  finished_inv_ratio: Num; // 库存商品/营业总收入 —— 成品滞销排雷（基酒不计入）
 }
 
 function periodBaseMetrics(report: PeriodReport): PeriodMetrics {
@@ -63,6 +67,10 @@ function periodBaseMetrics(report: PeriodReport): PeriodMetrics {
   const ncro = g('net_cash_operating');
   const capex = g('capex_cash');
   const oprofit = g('operating_profit');
+  const cfs = g('cash_from_sales');
+
+  // 白酒蓄水池口径：优先合同负债（新准则），缺失时回退预收款项（旧准则）
+  const contractLiab = g('contract_liabilities') ?? g('advance_receipts');
 
   const interestBearingDebt = safeSum([
     g('short_term_loans'),
@@ -103,6 +111,11 @@ function periodBaseMetrics(report: PeriodReport): PeriodMetrics {
     accrual_ta: safeDiv(safeSub(npp, ncro), ta),
     // 经营现金流 / 营业利润：收现质量，越接近 1 越好
     ncf_to_op_profit: safeDiv(ncro, oprofit),
+    // 白酒专属：合同负债(或预收)/营收、收现比、成品库存/营收。
+    // 硬约束：任一输入缺失时结果必须是 null（禁止把缺失当 0/安全）
+    contract_liab_ratio: safeDiv(contractLiab, rev),
+    sales_cash_ratio: safeDiv(cfs, rev),
+    finished_inv_ratio: safeDiv(g('inventory_finished'), rev),
     net_margin_parent_dupont: safeDiv(npp, rev),
     asset_turnover: null,
     equity_multiplier_dupont: null,

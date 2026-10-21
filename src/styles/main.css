@@ -6,6 +6,17 @@
   --wm-line: 226 232 240;
   --wm-brand: 47 107 255;
   --wm-brand-soft: 234 241 255;
+  /* 语义色（DESIGN_SPEC §2.1）：安全 / 关注 / 高危 / 信息 / 缺失 */
+  --wm-safe: 5 150 105;
+  --wm-safe-soft: 236 253 245;
+  --wm-watch: 217 119 6;
+  --wm-watch-soft: 255 251 235;
+  --wm-danger: 220 38 38;
+  --wm-danger-soft: 254 242 242;
+  --wm-info: 37 99 235;
+  --wm-info-soft: 239 246 255;
+  --wm-na: 148 163 184;
+  --wm-na-soft: 248 250 252;
   --wm-font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -44,6 +55,7 @@ a {
   border: 1px solid rgb(var(--wm-line));
   padding: 6px 10px;
   text-align: left;
+  white-space: nowrap;
 }
 .data-table th {
   background: rgb(var(--wm-brand-soft));
@@ -52,4 +64,15 @@ a {
 }
 .data-table tbody tr:nth-child(even) {
   background: rgb(248 250 252);
+}
+/* 窄屏表格横向滚动（DESIGN_SPEC §7） */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 术语提示虚线下划线（DESIGN_SPEC §4.8） */
+.term-tip-trigger {
+  border-bottom: 1px dashed rgb(var(--wm-info));
+  cursor: help;
 }

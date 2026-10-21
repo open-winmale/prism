@@ -1,5 +1,5 @@
 import type { IndustryKey, ReportDataset } from '@/engine';
-import { SAMPLES, getSample } from './loader';
+import { LIQUOR_SAMPLES, SAMPLES, getSample } from './loader';
 
 // 数据提供方抽象：默认走内置示例，可选连接赢麻了开放平台（Open AppId）获取真实财报。
 // 设计对齐 ../skillhub 的「通过 Open AppId 连后端」思路——开源免费版用示例引流，
@@ -7,12 +7,19 @@ import { SAMPLES, getSample } from './loader';
 export interface DataProvider {
   kind: 'sample' | 'winmale';
   list(): Promise<{ symbol: string; name: string; industry: IndustryKey }[]>;
+  /** 全量列表（含非白酒对照样本）；默认等同 list() */
+  listAll?(): Promise<{ symbol: string; name: string; industry: IndustryKey }[]>;
   get(symbol: string): Promise<ReportDataset>;
 }
 
 export class SampleProvider implements DataProvider {
   kind = 'sample' as const;
+  // 首页列表只给白酒（M1 收窄）；get 仍可取任意样本（制造业样本供对照视图/测试）
   async list() {
+    return LIQUOR_SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
+  }
+  // 全量：白酒 + 对照样本（分析页下拉切换用）
+  async listAll() {
     return SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
   }
   async get(symbol: string) {

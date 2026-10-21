@@ -1,77 +1,84 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { INDUSTRIES, PROBLEMS, type IndustryKey, type ProblemId } from '@/engine';
 import { useAppStore } from '@/store/useApp';
+import CompanyPicker from './CompanyPicker.vue';
 
+// 首页（DESIGN_SPEC §3.2）：行业固定白酒，去掉选行业步骤；公司卡片直达报告。
 const router = useRouter();
 const store = useAppStore();
-const selProblem = ref<ProblemId>('risk');
-const selIndustry = ref<IndustryKey>('general');
 
-function start() {
-  store.setProblem(selProblem.value);
-  store.setIndustry(selIndustry.value);
-  router.push({ path: '/analyze', query: { problem: selProblem.value, industry: selIndustry.value } });
+onMounted(() => {
+  if (!store.stockList.length) store.init();
+});
+
+const cards = computed(() =>
+  store.stockList.map((s) => {
+    const ds = store.dataset?.symbol === s.symbol ? store.dataset : null;
+    // meta 在数据集加载后才有；列表卡片用 provider 元信息 + dataset meta（当前公司）兜底
+    return {
+      symbol: s.symbol,
+      name: s.name,
+      tags: (ds?.meta?.fragrance ? `${ds.meta.fragrance}·${ds.meta.priceBand ?? ''}` : '').replace(/·$/, ''),
+      feature: ds?.meta?.sourceNote ?? undefined,
+      sourceReal: store.usingRealData ? true : null,
+    };
+  }),
+);
+
+function pick(symbol: string) {
+  router.push({ path: '/analyze', query: { symbol } });
 }
 </script>
 
 <template>
   <div class="space-y-8">
     <section class="text-center">
-      <h1 class="text-3xl font-bold">用一个投资问题，读懂一家公司的财报</h1>
+      <h1 class="text-3xl font-medium leading-snug">用一份财报，看懂一家白酒公司</h1>
       <p class="mt-2 text-slate-500">
-        财报透视 · 赢麻了开源免费版：排雷、ROE、毛利率、资产、存货、产销量，图表化呈现，思路来自老唐读财报。
+        财报透视 · 赢麻了开源免费版：老唐排雷清单 + 质地体检 + 渠道蓄水池，图表化呈现，先给结论再给证据。
       </p>
     </section>
 
     <section>
-      <h2 class="mb-3 text-lg font-semibold">① 你想解决哪个投资问题？</h2>
+      <h2 class="mb-3 text-lg font-medium">选择一家公司，直接看体检报告</h2>
       <div class="grid gap-3 sm:grid-cols-2">
-        <button
-          v-for="p in PROBLEMS"
-          :key="p.id"
-          @click="selProblem = p.id"
-          class="rounded-xl border p-4 text-left transition hover:shadow"
-          :class="selProblem === p.id ? 'border-brand bg-brandsoft' : 'border-slate-200 bg-white'"
-        >
-          <div class="text-2xl">{{ p.icon }}</div>
-          <div class="mt-1 font-semibold">{{ p.title }}</div>
-          <div class="mt-1 text-sm text-slate-500">{{ p.question }}</div>
-          <div class="mt-2 text-xs text-slate-400">{{ p.desc }}</div>
-        </button>
+        <template v-if="cards.length">
+          <CompanyPicker
+            v-for="c in cards"
+            :key="c.symbol"
+            :name="c.name"
+            :symbol="c.symbol"
+            :tags="c.tags"
+            :feature="c.feature"
+            :source-real="c.sourceReal ?? undefined"
+            :selected="store.currentSymbol === c.symbol"
+            @select="pick(c.symbol)"
+          />
+        </template>
+        <div v-else class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-400">加载中…</div>
       </div>
     </section>
 
-    <section>
-      <h2 class="mb-3 text-lg font-semibold">② 公司属于哪个行业？（聚焦不同模块）</h2>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="ind in INDUSTRIES"
-          :key="ind.key"
-          @click="selIndustry = ind.key"
-          class="rounded-full border px-3 py-1.5 text-sm transition"
-          :class="
-            selIndustry === ind.key
-              ? 'border-brand bg-brand text-white'
-              : 'border-slate-200 bg-white text-slate-600'
-          "
-        >
-          {{ ind.name }}
-        </button>
-      </div>
-      <p class="mt-2 text-xs text-slate-400">
-        {{ INDUSTRIES.find((i) => i.key === selIndustry)?.note }}
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="m-0 text-base font-semibold">方法论</h3>
+      <p class="mt-1 text-sm leading-6 text-slate-600">
+        排雷规则与质量维度来自老唐《手把手教你读财报》与专业版质量体检包：合同负债蓄水池、收现比、
+        基酒与成品库存分口径、现金流八型。所有规则透明声明、每个结论带佐证数字，缺数据明示而非假装通过。
       </p>
+      <router-link to="/about" class="text-sm text-brand hover:underline">了解完整方法论 →</router-link>
     </section>
 
-    <div class="text-center">
-      <button
-        @click="start"
-        class="rounded-full bg-brand px-8 py-3 text-lg font-medium text-white hover:opacity-90"
+    <section class="rounded-xl bg-brandsoft p-5 text-center">
+      <p class="m-0 text-sm text-slate-600">想连接真实财报数据、看完整专业版分析？</p>
+      <a
+        :href="store.proUrl"
+        target="_blank"
+        rel="noopener"
+        class="mt-3 inline-block rounded-full bg-brand px-8 py-2.5 font-medium text-white hover:opacity-90"
       >
-        开始分析 →
-      </button>
-    </div>
+        前往赢麻了专业版 →
+      </a>
+    </section>
   </div>
 </template>

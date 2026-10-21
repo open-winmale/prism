@@ -13,6 +13,9 @@ export interface BalanceSheet {
   prepayments?: Num; // 预付款项
   other_receivables?: Num; // 其他应收款
   inventories?: Num; // 存货
+  inventory_raw?: Num; // 存货-原材料
+  inventory_wip?: Num; // 存货-半成品（白酒即基酒）
+  inventory_finished?: Num; // 存货-库存商品（成品）
   contract_assets?: Num; // 合同资产
   other_current_assets?: Num; // 其他流动资产
   total_current_assets?: Num; // 流动资产合计
@@ -37,6 +40,8 @@ export interface BalanceSheet {
   bonds_payable?: Num; // 应付债券
   lease_liabilities?: Num; // 租赁负债
   accounts_payable?: Num; // 应付账款
+  contract_liabilities?: Num; // 合同负债（白酒=经销商预付款，行业第一领先指标）
+  advance_receipts?: Num; // 预收款项（旧准则列示，缺合同负债时兜底）
   total_current_liabilities?: Num; // 流动负债合计
   total_liabilities?: Num; // 负债合计
   // 权益
@@ -106,8 +111,11 @@ export type IndustryKey =
 export interface ProductionSalesRow {
   period: string; // 年份，如 '2023'
   product?: string; // 产品（多产品时）
+  tier?: 'high' | 'mid' | 'low' | 'total'; // 价格带（高端/中端/低端/合计）
   production?: Num; // 产量
   sales?: Num; // 销量
+  revenue?: Num; // 该口径收入（元）——量价拆解必需
+  unitPrice?: Num; // 吨价（元/吨），可由 revenue/sales 派生
   inventory?: Num; // 期末库存
   unit?: string; // 单位，如 '万吨'
 }
@@ -123,4 +131,8 @@ export interface ReportDataset {
   disclaimer?: string; // 数据来源说明（示例/真实）
   // 同业基准（可选，来自赢麻了后端或内置行业常量），键为指标名，如 gross_margin
   peerBench?: Record<string, number>;
+  // 公司画像（白酒）：香型/价格带/数据来源说明
+  meta?: { fragrance?: string; priceBand?: string; sourceNote?: string };
+  // 产品结构收入（M2 量价拆解用，M1 先定义 schema）
+  segmentRevenue?: { period: string; tier: string; revenue: Num; grossMargin?: Num }[];
 }

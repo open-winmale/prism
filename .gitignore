@@ -8,6 +8,9 @@ dist-ssr
 *.log
 .vite
 coverage
-e2e-screenshots
+# E2E 运行时输出忽略，但三视口基线截图入库（IMPLEMENTATION_PLAN.md §7）
+e2e-screenshots/*
+!e2e-screenshots/run.cjs
+!e2e-screenshots/ui-baseline
 .playwright-cli
 .workbuddy

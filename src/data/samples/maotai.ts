@@ -9,6 +9,7 @@ export const maotaiSample: ReportDataset = {
   name: '演示·白酒龙头',
   industry: 'liquor',
   disclaimer: '演示数据：结构参考白酒行业龙头，非真实财报，请以官方披露为准。连接赢麻了开放平台可获取真实数据。',
+  meta: { fragrance: '酱香', priceBand: '超高端', sourceNote: '结构参考白酒龙头：毛利率~91%、先款后货、合同负债蓄水池稳定' },
   periods: ['2020-12-31', '2021-12-31', '2022-12-31', '2023-12-31', '2024-12-31'],
   reports: [
     {
@@ -18,7 +19,7 @@ export const maotaiSample: ReportDataset = {
         prepayments: yi(9), other_receivables: yi(0.3), inventories: yi(288), other_current_assets: yi(15),
         total_current_assets: yi(1810), fixed_assets: yi(162), cip: yi(21), intangible_assets: yi(5),
         deferred_tax_assets: yi(1), other_noncurrent_assets: yi(4), total_noncurrent_assets: yi(193),
-        total_assets: yi(2003), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(18), total_liabilities: yi(456),
+        total_assets: yi(2003), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(18), contract_liabilities: yi(91), total_liabilities: yi(456),
         equity_parent: yi(1547),
       },
       income: {
@@ -38,7 +39,7 @@ export const maotaiSample: ReportDataset = {
         prepayments: yi(11), other_receivables: yi(0.4), inventories: yi(334), other_current_assets: yi(18),
         total_current_assets: yi(2225), fixed_assets: yi(175), cip: yi(22), intangible_assets: yi(6),
         deferred_tax_assets: yi(1.5), other_noncurrent_assets: yi(5), total_noncurrent_assets: yi(210),
-        total_assets: yi(2435), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(20), total_liabilities: yi(520),
+        total_assets: yi(2435), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(20), contract_liabilities: yi(101), total_liabilities: yi(520),
         equity_parent: yi(1915),
       },
       income: {
@@ -58,7 +59,7 @@ export const maotaiSample: ReportDataset = {
         prepayments: yi(13), other_receivables: yi(0.5), inventories: yi(388), other_current_assets: yi(20),
         total_current_assets: yi(2585), fixed_assets: yi(190), cip: yi(22), intangible_assets: yi(7),
         deferred_tax_assets: yi(2), other_noncurrent_assets: yi(6), total_noncurrent_assets: yi(227),
-        total_assets: yi(2812), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(23), total_liabilities: yi(580),
+        total_assets: yi(2812), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(23), contract_liabilities: yi(115), total_liabilities: yi(580),
         equity_parent: yi(2232),
       },
       income: {
@@ -78,7 +79,7 @@ export const maotaiSample: ReportDataset = {
         prepayments: yi(15), other_receivables: yi(0.6), inventories: yi(462), other_current_assets: yi(24),
         total_current_assets: yi(3142), fixed_assets: yi(205), cip: yi(21), intangible_assets: yi(8),
         deferred_tax_assets: yi(2.5), other_noncurrent_assets: yi(7), total_noncurrent_assets: yi(244),
-        total_assets: yi(3386), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(26), total_liabilities: yi(660),
+        total_assets: yi(3386), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(26), contract_liabilities: yi(137), total_liabilities: yi(660),
         equity_parent: yi(2726),
       },
       income: {
@@ -98,7 +99,7 @@ export const maotaiSample: ReportDataset = {
         prepayments: yi(17), other_receivables: yi(0.7), inventories: yi(520), other_current_assets: yi(28),
         total_current_assets: yi(3626), fixed_assets: yi(218), cip: yi(20), intangible_assets: yi(9),
         deferred_tax_assets: yi(3), other_noncurrent_assets: yi(8), total_noncurrent_assets: yi(258),
-        total_assets: yi(3884), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(30), total_liabilities: yi(720),
+        total_assets: yi(3884), short_term_loans: 0, long_term_loans: 0, accounts_payable: yi(30), contract_liabilities: yi(160), total_liabilities: yi(720),
         equity_parent: yi(3164),
       },
       income: {

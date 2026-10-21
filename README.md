@@ -124,6 +124,9 @@ src/
 - [数据模型与字段映射](./docs/DATA_MODEL.md)
 - [`../script` 资产复用说明](./docs/SCRIPT_REUSE.md)
 - [分析模块与老唐方法论](./docs/ANALYSIS_MODULES.md)
+- [全面评审与优化计划（白酒聚焦）](./docs/REVIEW_AND_PLAN.md)
+- [M1 实施方案](./docs/IMPLEMENTATION_PLAN.md)
+- [UI/UX 设计规格与还原度验收清单](./docs/DESIGN_SPEC.md)
 - [路线图](./ROADMAP.md) · [更新日志](./CHANGELOG.md)
 
 ---

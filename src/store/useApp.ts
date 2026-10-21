@@ -29,7 +29,8 @@ export const useAppStore = defineStore('app', () => {
   const computedDs = ref<ComputedDataset | null>(null);
 
   const problem = ref<ProblemId | null>(null);
-  const industry = ref<IndustryKey>('general');
+  // 行业固定白酒（M1 收窄，IMPLEMENTATION_PLAN.md §4.1）
+  const industry = ref<IndustryKey>('liquor');
 
   // 视图状态：'report' = Hero 报告（默认）；其他值 = 次级维度模块 id
   const view = ref<string>('report');
@@ -74,6 +75,18 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  // 额外样本（如制造业对照样例）：不进首页白酒列表，但可在分析页下拉切换
+  const extraSymbols = ref<{ symbol: string; name: string; industry: IndustryKey }[]>([]);
+  async function loadExtraSamples() {
+    try {
+      const all = provider.value.listAll ? await provider.value.listAll() : await provider.value.list();
+      const known = new Set(stockList.value.map((s) => s.symbol));
+      extraSymbols.value = all.filter((s) => !known.has(s.symbol));
+    } catch {
+      /* 静默：对照样本加载失败不影响主流程 */
+    }
+  }
+
   async function selectStock(symbol: string) {
     loading.value = true;
     error.value = '';
@@ -98,6 +111,11 @@ export const useAppStore = defineStore('app', () => {
   function setIndustry(i: IndustryKey) {
     industry.value = i;
     runCurrent();
+  }
+
+  // M1 起行业固定白酒：外部传 general 等历史值时归一为 liquor
+  function normalizeIndustry(i: IndustryKey | undefined): IndustryKey {
+    return i === 'manufacturing' ? 'manufacturing' : 'liquor';
   }
 
   function setView(v: string) {
@@ -135,9 +153,12 @@ export const useAppStore = defineStore('app', () => {
     ctxReady,
     applyEnv,
     init,
+    loadExtraSamples,
+    extraSymbols,
     selectStock,
     setProblem,
     setIndustry,
+    normalizeIndustry,
     setView,
     runCurrent,
   };

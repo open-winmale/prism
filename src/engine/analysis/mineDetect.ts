@@ -1,5 +1,5 @@
 import type { AnalysisContext, AnalysisModule, AnalysisResult, ChartSpec, InsightBlock } from './define';
-import type { Num, PeriodReport } from '../schema/types';
+import type { IndustryKey, Num, PeriodReport } from '../schema/types';
 import { fieldGetter } from '../compute';
 import { LAOTANG_MINING_RULES } from '../laotang/rules';
 import { periodLabel, safeDiv, safeSum, yoy } from '../utils';
@@ -21,6 +21,63 @@ export interface MineCheck {
   next?: string; // 触发时：下一步核查什么
   laotang?: string; // 老唐原理
   chart?: ChartSpec; // 触发时的证据图
+}
+
+// 行业阈值表（IMPLEMENTATION_PLAN.md §3.1）——
+// 规则相同、阈值与文案分行业，避免「制造业标尺误判白酒」。
+interface MineThresholds {
+  arRatioGate: number; // 应收/营收 比重门槛
+  arBeatYears: number; // 应收增速跑赢营收的最少年数
+  arSeverity: MineSeverity; // 触发等级（白酒降为 low：先款后货几乎无应收）
+  arSafeNote?: string; // 行业化安全文案补充
+  invMode: 'total' | 'finished'; // 存货检查用总额还是成品口径（白酒=基酒是竞争力，只查成品）
+  invRatioGate: number;
+  invRatioGateFallback?: number; // 成品拆分缺失时回退总额口径的阈值（白酒：总额含基酒，需放宽）
+  invBeatYears: number;
+  invSeverity: MineSeverity;
+  cfoWindowYears: number; // CFO/净利润 滑动窗口（白酒=3 年均值，平滑预收款扰动）
+  cfoGate: number;
+  cfoSalesCashExempt: boolean; // 收现比 >1 时豁免（白酒特有：预收款使单年 CFO 剧烈波动但收现极好）
+  gmMode: 'bench' | 'self'; // 毛利率畸高：对同业基准（通用）还是对自身 5 年均值（白酒：90% 毛利是护城河）
+  gmDeviation: number;
+  cipNote?: string;
+}
+
+const GENERAL_T: MineThresholds = {
+  arRatioGate: 0.15,
+  arBeatYears: 2,
+  arSeverity: 'high',
+  invMode: 'total',
+  invRatioGate: 0.5,
+  invBeatYears: 2,
+  invSeverity: 'high',
+  cfoWindowYears: 1,
+  cfoGate: 0.8,
+  cfoSalesCashExempt: false,
+  gmMode: 'bench',
+  gmDeviation: 0.1,
+};
+
+const LIQUOR_T: MineThresholds = {
+  arRatioGate: 0.3,
+  arBeatYears: 2,
+  arSeverity: 'low',
+  arSafeNote: '（白酒先款后货，正常应收极低）',
+  invMode: 'finished',
+  invRatioGate: 0.25,
+  invRatioGateFallback: 0.6, // 无成品拆分时回退总额：茅台存货/营收~30% 且大头是基酒，0.25 会误报
+  invBeatYears: 2,
+  invSeverity: 'high',
+  cfoWindowYears: 3,
+  cfoGate: 0.8,
+  cfoSalesCashExempt: true,
+  gmMode: 'self',
+  gmDeviation: 0.05,
+  cipNote: '白酒扩产周期 2–3 年属正常节奏，重点看是否长期挂账不转固。',
+};
+
+function thresholdsFor(industry: IndustryKey): MineThresholds {
+  return industry === 'liquor' ? LIQUOR_T : GENERAL_T;
 }
 
 const lt = (id: string): string | undefined => LAOTANG_MINING_RULES.find((r) => r.id === id)?.principle;
@@ -45,7 +102,9 @@ const beatYears = (a: Num[], b: Num[]): number =>
   a.slice(1).filter((v, i) => v != null && b[i + 1] != null && (v as number) > (b[i + 1] as number)).length;
 
 // 9 项老唐排雷检查（口径与老唐《手把手教你读财报》排雷清单一致）
+// 阈值与严重度按 ctx.industry 行业化：白酒用 LIQUOR_T，其余用通用制造业标尺。
 export function mineChecks(ctx: AnalysisContext): MineCheck[] {
+  const T = thresholdsFor(ctx.industry);
   const labels = ctx.computed.periods.map(periodLabel);
   const revenue = arr(ctx, 'total_revenue');
   const ar = arr(ctx, 'accounts_receivable').map((v, i) =>
@@ -71,16 +130,16 @@ export function mineChecks(ctx: AnalysisContext): MineCheck[] {
     const revYoy = yoyArr(revenue);
     const arRatio = safeDiv(ar[last], revenue[last]) ?? 0;
     const beat = beatYears(arYoy, revYoy);
-    const triggered = beat >= 2 && arRatio > 0.15;
+    const triggered = beat >= T.arBeatYears && arRatio > T.arRatioGate;
     checks.push({
       id: 'ar_growth',
       name: '应收增速持续高于营收增速',
-      severity: 'high',
+      severity: T.arSeverity,
       status: triggered ? 'triggered' : 'safe',
       evidence: `最新应收/营收=${pct(arRatio)}；应收增速跑赢营收的年份 ${beat} 年`,
       why: triggered
         ? '应收账款增速连续多年跑赢营收，收入可能并未真正变现——存在渠道压货或放宽信用政策虚增收入的嫌疑。'
-        : `应收/营收仅 ${pct(arRatio)}，且回款增速未持续跑赢营收——收入基本都收回了钱。`,
+        : `应收/营收仅 ${pct(arRatio)}，且回款增速未持续跑赢营收——收入基本都收回了钱${T.arSafeNote ?? ''}。`,
       next: triggered ? '下一步：看附注「应收账款」账龄与前五大欠款方，核对期后回款情况。' : undefined,
       laotang: lt('ar_growth'),
       chart: triggered
@@ -97,52 +156,79 @@ export function mineChecks(ctx: AnalysisContext): MineCheck[] {
   }
 
   // 2) 存货增速持续高于营收增速（且存货/营收达到可观比重）
+  // 白酒版：改查「库存商品/营收」——基酒储存 3–5 年是竞争力而非风险；基酒增长单独输出中性提示。
   {
-    const invYoy = yoyArr(inventory);
     const revYoy = yoyArr(revenue);
-    const invRatio = safeDiv(inventory[last], revenue[last]) ?? 0;
-    const beat = beatYears(invYoy, revYoy);
-    const triggered = beat >= 2 && invRatio > 0.5;
+
+    const finishedInv = arr(ctx, 'inventory_finished');
+    const hasFinished = finishedInv.some((v) => v != null);
+    const useFinished = T.invMode === 'finished' && hasFinished;
+    const gate = useFinished ? T.invRatioGate : (T.invRatioGateFallback ?? T.invRatioGate);
+    const target = useFinished ? finishedInv : inventory;
+    const targetRatio = safeDiv(target[last], revenue[last]) ?? 0;
+    const targetYoy = yoyArr(target);
+    const beat = beatYears(targetYoy, revYoy);
+    const triggered = beat >= T.invBeatYears && targetRatio > gate;
+
+    const wip = arr(ctx, 'inventory_wip');
+    const hasWip = wip.some((v) => v != null);
+    const wipNote =
+      ctx.industry === 'liquor' && hasWip && useFinished
+        ? ` 半成品（基酒）${((wip[last] ?? 0) / 1e8).toFixed(0)} 亿不计入排雷——基酒储备是白酒产能与品质护城河，增长属中性偏正面。`
+        : '';
+
     checks.push({
       id: 'inventory_growth',
-      name: '存货增速持续高于营收增速',
-      severity: 'high',
+      name: useFinished ? '成品库存增速持续高于营收增速' : '存货增速持续高于营收增速',
+      severity: T.invSeverity,
       status: triggered ? 'triggered' : 'safe',
-      evidence: `最新存货/营收=${pct(invRatio)}；存货增速跑赢营收的年份 ${beat} 年`,
+      evidence: useFinished
+        ? `最新库存商品/营收=${pct(targetRatio)}（基酒口径已剔除）；成品增速跑赢营收 ${beat} 年`
+        : `最新存货/营收=${pct(targetRatio)}${ctx.industry === 'liquor' ? '（总额口径：含基酒储备，阈放宽至 ' + pct(gate) + '）' : ''}；存货增速跑赢营收的年份 ${beat} 年`,
       why: triggered
-        ? '存货增速连续高于营收且体量可观，产品可能滞销或虚增库存——需区分「藏利润」还是「埋雷」。'
-        : `存货/营收 ${pct(invRatio)}，备货规模与销售节奏匹配（白酒等长周期储备行业请结合产业特性理解）。`,
-      next: triggered ? '下一步：看存货附注构成（库存商品 vs 原材料）与跌价准备计提是否充分。' : undefined,
+        ? useFinished
+          ? '成品库存增速连续高于营收且占比可观——终端动销可能跟不上出货节奏，渠道压货或滞销风险需排查。'
+          : '存货增速连续高于营收且体量可观，产品可能滞销或虚增库存——需区分「藏利润」还是「埋雷」。'
+        : `${useFinished ? '库存商品' : '存货'}/营收 ${pct(targetRatio)}，备货规模与销售节奏匹配（白酒等长周期储备行业请结合产业特性理解）。${wipNote}`,
+      next: triggered ? '下一步：看存货附注构成（库存商品 vs 基酒/原材料）与跌价准备计提是否充分。' : undefined,
       laotang: lt('inventory_growth'),
       chart: triggered
         ? compareBars(
             labels,
             [
-              { name: '存货增速', data: invYoy.map((v) => (v == null ? null : v * 100)) },
+              { name: useFinished ? '库存商品增速' : '存货增速', data: targetYoy.map((v) => (v == null ? null : v * 100)) },
               { name: '营收增速', data: revYoy.map((v) => (v == null ? null : v * 100)) },
             ],
-            { title: '存货 vs 营收 同比', unit: '%' },
+            { title: `${useFinished ? '库存商品' : '存货'} vs 营收 同比`, unit: '%' },
           )
         : undefined,
     });
   }
 
   // 3) 经营现金流长期低于净利润
+  // 白酒版：3 年滑动均值判定 + 收现比>1 豁免——预收款使单年 CFO 剧烈波动，但收现质量极好。
   {
     const ratio = cfo.map((v, i) => safeDiv(v, npp[i]));
-    const below = ratio.slice(1).filter((v): v is number => v != null && v < 0.8);
-    const triggered = below.length >= 2;
     const valid = ratio.slice(1).filter((v): v is number => v != null);
-    const avgRatio = valid.length ? valid.reduce((s, v) => s + v, 0) / valid.length : null;
+    const window = Math.min(T.cfoWindowYears, valid.length);
+    const recent = valid.slice(-window);
+    const avgRatio = recent.length ? recent.reduce((s, v) => s + v, 0) / recent.length : null;
+    const salesCash = ctx.computed.metrics.map((x) => x.sales_cash_ratio);
+    const salesCashExempt = T.cfoSalesCashExempt && avgRatio != null && avgRatio < T.cfoGate && (salesCash[last] ?? 0) > 1.0;
+    const below = ratio.slice(1).filter((v): v is number => v != null && v < T.cfoGate);
+    const triggered = avgRatio != null && avgRatio < T.cfoGate && !salesCashExempt;
+    const windowLabel = T.cfoWindowYears > 1 ? `近 ${window} 年均值` : '最新值';
     checks.push({
       id: 'cfo_vs_profit',
       name: '经营现金流长期低于净利润',
       severity: 'high',
       status: triggered ? 'triggered' : 'safe',
-      evidence: `最新经营现金流/归母净利润=${pct(ratio[last])}；近 ${below.length} 年低于 80%`,
+      evidence: `经营现金流/归母净利润：${windowLabel}=${pct(avgRatio)}（阈 ${pct(T.cfoGate)}）${salesCashExempt ? `；收现比 ${pct(salesCash[last])} >100% 豁免` : `；近 ${below.length} 年低于 ${pct(T.cfoGate)}`}`,
       why: triggered
         ? '净利润的「含金量」不足：账面利润没有同步变成现金，需警惕应收/存货占用或利润调节。'
-        : `近年经营现金流/净利润均值 ${pct(avgRatio)}——利润基本都变成了真金白银。`,
+        : salesCashExempt
+          ? `单年 CFO 受预收款节奏扰动低于净利润，但${windowLabel} ${pct(avgRatio)} 且收现比 ${pct(salesCash[last])}——收进来的都是真钱，利润含金量无忧。`
+          : `近年经营现金流/净利润均值 ${pct(avgRatio)}——利润基本都变成了真金白银。`,
       next: triggered ? '下一步：对比应收+存货的增量与现金流缺口，查「销售收现比」趋势是否同步恶化。' : undefined,
       laotang: lt('cfo_vs_profit'),
       chart: triggered
@@ -268,13 +354,55 @@ export function mineChecks(ctx: AnalysisContext): MineCheck[] {
     }
   }
 
-  // 8) 毛利率畸高且无护城河（需同业基准）
+  // 8) 毛利率畸高且无护城河
+  // 通用：对同业基准 +10pct；白酒：对自身 5 年均值偏离 >5pct 且无产品结构解释（90% 毛利是护城河）。
   {
     const gm = ctx.computed.metrics.map((x) => x.gross_margin);
-    if (ctx.peerBench?.gross_margin != null) {
+    if (T.gmMode === 'self') {
+      const valid = gm.filter((v): v is number => v != null);
+      const selfAvg = valid.length ? valid.reduce((s, v) => s + v, 0) / valid.length : null;
+      if (selfAvg != null) {
+        const latest = gm[last] ?? 0;
+        const dev = latest - selfAvg;
+        const triggered = Math.abs(dev) > T.gmDeviation;
+        checks.push({
+          id: 'gross_margin_anomaly',
+          name: '毛利率显著偏离自身均值',
+          severity: 'mid',
+          status: triggered ? 'triggered' : 'safe',
+          evidence: `最新毛利率 ${pct(latest, 1)} vs 自身 ${valid.length} 年均值 ${pct(selfAvg, 1)}（偏离 ${(dev * 100).toFixed(1)}pct）`,
+          why: triggered
+            ? dev > 0
+              ? `毛利率骤升 ${pct(dev, 1)}pct：高端白酒 90% 上下的毛利是护城河，但骤变需解释——是否产品结构（及非标/直销占比）突变或成本结转异常。`
+              : `毛利率骤降 ${pct(-dev, 1)}pct：可能是产品结构下移/促销加大，需结合量价与渠道数据核实。`
+            : `毛利率 ${pct(latest, 1)} 与自身均值 ${pct(selfAvg, 1)} 基本一致——高端白酒的超高毛利是品牌护城河，稳定本身就是信号。`,
+          next: triggered ? '下一步：拆分产品结构收入（高端/系列酒）与直销渠道占比，解释毛利率变动来源。' : undefined,
+          laotang: lt('gross_margin_anomaly'),
+          chart: triggered
+            ? trendLine(
+                labels,
+                [
+                  { name: '毛利率', values: gm.map((v) => (v == null ? null : v * 100)) },
+                  { name: '自身均值', values: gm.map(() => selfAvg * 100) },
+                ],
+                { title: '毛利率 vs 自身均值', unit: '%' },
+              )
+            : undefined,
+        });
+      } else {
+        checks.push({
+          id: 'gross_margin_anomaly',
+          name: '毛利率显著偏离自身均值',
+          severity: 'mid',
+          status: 'na',
+          evidence: '缺少毛利率数据',
+          why: '无法计算自身均值基准。',
+        });
+      }
+    } else if (ctx.peerBench?.gross_margin != null) {
       const bench = ctx.peerBench.gross_margin;
       const latest = gm[last] ?? 0;
-      const triggered = latest > bench + 0.1;
+      const triggered = latest > bench + T.gmDeviation;
       checks.push({
         id: 'gross_margin_anomaly',
         name: '毛利率畸高且无护城河',
@@ -319,8 +447,8 @@ export function mineChecks(ctx: AnalysisContext): MineCheck[] {
       status: triggered ? 'triggered' : 'safe',
       evidence: `最新在建工程/固定资产=${pct(ratio)}（警戒线 30%）`,
       why: triggered
-        ? '在建工程不转固可规避折旧、美化利润；长期挂账且金额巨大，需警惕费用藏进工程里。'
-        : `在建工程/固定资产仅 ${pct(ratio)}，转固节奏正常，折旧计提完整。`,
+        ? `在建工程不转固可规避折旧、美化利润；长期挂账且金额巨大，需警惕费用藏进工程里。${T.cipNote ?? ''}`
+        : `在建工程/固定资产仅 ${pct(ratio)}，转固节奏正常，折旧计提完整。${T.cipNote ? `白酒扩产周期 2–3 年属正常节奏。` : ''}`,
       next: triggered ? '下一步：看在建工程附注的工程进度与转固时间表，查利息资本化是否过度。' : undefined,
       laotang: lt('cip_stuck'),
       chart: triggered
@@ -330,6 +458,56 @@ export function mineChecks(ctx: AnalysisContext): MineCheck[] {
           })
         : undefined,
     });
+  }
+
+  // 10) 渠道信心（白酒专属）：合同负债/营收 连续 2 年环比降 >20% → mid
+  // 白酒第一领先指标：经销商打款意愿。字段/派生指标 M1 已就绪，缺失时输出 na。
+  if (ctx.industry === 'liquor') {
+    const clRatio = ctx.computed.metrics.map((x) => x.contract_liab_ratio);
+    if (clRatio.every((v) => v == null)) {
+      checks.push({
+        id: 'channel_confidence',
+        name: '渠道信心（合同负债蓄水池）',
+        severity: 'mid',
+        status: 'na',
+        evidence: '缺少合同负债/预收款项数据',
+        why: '合同负债是白酒第一领先指标——经销商提前打款的意愿直接反映渠道信心（补全数据后自动启用）。',
+      });
+    } else {
+      let dropStreak = 0;
+      let maxDrop = 0;
+      for (let i = 1; i < clRatio.length; i++) {
+        const cur = clRatio[i];
+        const prev = clRatio[i - 1];
+        if (cur == null || prev == null || prev === 0) continue;
+        const drop = 1 - cur / prev;
+        if (drop > 0.2) {
+          dropStreak++;
+          maxDrop = Math.max(maxDrop, drop);
+        } else {
+          dropStreak = 0;
+        }
+      }
+      const triggered = dropStreak >= 2;
+      checks.push({
+        id: 'channel_confidence',
+        name: '渠道信心（合同负债蓄水池）',
+        severity: 'mid',
+        status: triggered ? 'triggered' : 'safe',
+        evidence: `合同负债/营收最新 ${pct(clRatio[last])}；连续缩水超 20% 的年份 ${dropStreak} 年（最大降幅 ${pct(maxDrop)}）`,
+        why: triggered
+          ? '合同负债占营收比例连续两年大幅下滑——经销商打款意愿减弱，渠道信心退潮往往领先于收入降速，需排查终端动销与批价。'
+          : `合同负债/营收 ${pct(clRatio[last])}，蓄水池水位稳定——经销商提前打款意愿未减弱，渠道信心充足。`,
+        next: triggered ? '下一步：查合同负债附注季节奏（Q4/Q1 打款）、批价走势与经销商大会政策，判断是需求走弱还是主动控货。' : undefined,
+        laotang: '预收款是白酒公司调节利润的「蓄水池」，也是观察渠道景气度的第一窗口——水位骤降要警惕，蓄水提升是积极的领先信号。',
+        chart: triggered
+          ? trendLine(labels, [{ name: '合同负债/营收', values: clRatio.map((v) => (v == null ? null : v * 100)) }], {
+              title: '渠道蓄水池水位',
+              unit: '%',
+            })
+          : undefined,
+      });
+    }
   }
 
   return checks;
