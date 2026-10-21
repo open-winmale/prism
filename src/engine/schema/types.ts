@@ -79,10 +79,18 @@ export interface CashFlowStatement {
 
 export interface PeriodReport {
   period: string; // 如 '2023-12-31'
+  /**
+   * 报告期采样：Q1（一季报·单季）/ Q2（半年报·累计）/ Q3（三季报·累计）/ Q4（年报·累计）。
+   * 中国财报口径：Q1 是单季值，Q2/Q3/Q4 都是「年初至今累计值」——
+   * 单季值必须用「本期累计 − 上期累计」推导（对应 script 资产的 DIFFQ_YTD）。
+   * 缺省视为 'Q4'（年度口径，历史数据兼容）。
+   */
+  sampling?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
   balance: BalanceSheet;
   income: IncomeStatement;
   cashflow: CashFlowStatement;
 }
+
 
 export interface FootnoteSection {
   title: string;

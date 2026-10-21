@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/useApp';
 import CompanyPicker from './CompanyPicker.vue';
 import SymbolSearch from '@/components/SymbolSearch.vue';
+import DataSourceDialog from '@/components/DataSourceDialog.vue';
 
 // 首页（DESIGN_SPEC §3.2）：行业固定白酒；精选头部公司卡片直达，
 // 其他公司不平铺——走搜索接口按需查（live 模式）。
 const router = useRouter();
 const store = useAppStore();
+const showSettings = ref(false);
 
 onMounted(() => {
   if (!store.stockList.length) store.init();
@@ -83,15 +85,16 @@ function pick(symbol: string) {
     </section>
 
     <section class="rounded-xl bg-brandsoft p-5 text-center">
-      <p class="m-0 text-sm text-slate-600">想连接真实财报数据、看完整专业版分析？</p>
-      <a
-        :href="store.proUrl"
-        target="_blank"
-        rel="noopener"
-        class="mt-3 inline-block rounded-full bg-brand px-8 py-2.5 font-medium text-white hover:opacity-90"
+      <p class="m-0 text-sm font-medium text-slate-700">想查任意公司、看最新财报？</p>
+      <p class="mt-1 text-xs text-slate-500">赢麻了开放平台对个人完全免费公开注册，填入 AppId 即可解锁全市场数据</p>
+      <button
+        class="mt-3 cursor-pointer rounded-full bg-brand px-8 py-2.5 font-medium text-white transition hover:opacity-90"
+        @click="showSettings = true"
       >
-        前往赢麻了专业版 →
-      </a>
+        免费开通实时数据 →
+      </button>
     </section>
+
+    <DataSourceDialog :open="showSettings" @close="showSettings = false" />
   </div>
 </template>

@@ -159,19 +159,21 @@ export class LiveProvider implements DataProvider {
   }
 
   async getDataset(symbol: string, opts: FetchOptions = {}): Promise<DatasetResult> {
-    // 内置样本（制造对照等）直接走快照：0 EC、必然可用，也不该打到接口
+    const mode = opts.mode ?? 'annual';
+    // 内置样本（白酒三家 + 制造对照）只在年度口径下走快照：0 EC、必然可用。
+    // 季度口径必须走接口——快照没有季度期次，也没有「切换口径」的意义。
     const builtin = getSample(symbol);
-    if (builtin) {
+    if (builtin && mode === 'annual') {
       return { dataset: builtin, kind: 'snapshot', cached: false, ecCost: 0, missing: [] };
     }
-    const years = opts.years ?? 5;
-    const hit = readCache(symbol, years);
+    const count = opts.years ?? (mode === 'quarterly' ? 8 : 5);
+    const hit = readCache(symbol, count, mode);
     if (hit) {
       return { dataset: hit.dataset, kind: 'live', cached: true, ecCost: 0, missing: [] };
     }
     const onProgress: ((p: FetchProgress) => void) | undefined = opts.onProgress;
-    const outcome = await fetchDataset(this.client, symbol, { ...opts, onProgress });
-    writeCache(symbol, years, outcome.dataset, outcome.ecCost);
+    const outcome = await fetchDataset(this.client, symbol, { ...opts, mode, years: count, onProgress });
+    writeCache(symbol, count, outcome.dataset, outcome.ecCost, mode);
     return {
       dataset: outcome.dataset,
       kind: 'live',

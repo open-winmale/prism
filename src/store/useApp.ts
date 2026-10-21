@@ -120,8 +120,12 @@ export const useAppStore = defineStore('app', () => {
   // 请求序号：快速切换标的时丢弃过期响应，避免慢请求覆盖新选择
   let selectSeq = 0;
 
-  async function selectStock(symbol: string) {
+  /** 数据口径：annual=年报（经审计，跟自己比年度趋势）；quarterly=最近 8 个报告期（单季推导） */
+  const dataMode = ref<'annual' | 'quarterly'>('annual');
+
+  async function selectStock(symbol: string, mode?: 'annual' | 'quarterly') {
     const seq = ++selectSeq;
+    if (mode && mode !== dataMode.value) dataMode.value = mode;
     // 立即标记意图：防止与 init() 的自动选中竞态（URL 指定的标的会被首页第一家公司覆盖）
     currentSymbol.value = symbol;
     loading.value = true;
@@ -129,6 +133,8 @@ export const useAppStore = defineStore('app', () => {
     progress.value = null;
     try {
       const res = await providerInstance.getDataset(symbol, {
+        mode: dataMode.value,
+        years: dataMode.value === 'quarterly' ? 8 : 5,
         onProgress: (p) => {
           if (seq === selectSeq) progress.value = p;
         },
@@ -148,6 +154,12 @@ export const useAppStore = defineStore('app', () => {
         progress.value = null;
       }
     }
+  }
+
+  /** 切换年度/季度口径（保留当前标的重新取数，命中不同缓存） */
+  function switchMode(mode: 'annual' | 'quarterly') {
+    if (mode === dataMode.value || !currentSymbol.value) return;
+    void selectStock(currentSymbol.value, mode);
   }
 
   // ── 动态选标的 ──
@@ -244,6 +256,8 @@ export const useAppStore = defineStore('app', () => {
     setView,
     scenario,
     setScenario,
+    dataMode,
+    switchMode,
     runCurrent,
   };
 });

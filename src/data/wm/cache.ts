@@ -14,8 +14,8 @@ export interface CacheEntry {
   ecCost: number;
 }
 
-function key(symbol: string, years: number): string {
-  return `${PREFIX}${symbol}:${years}`;
+function key(symbol: string, years: number, mode: 'annual' | 'quarterly' = 'annual'): string {
+  return `${PREFIX}${symbol}:${mode}:${years}`;
 }
 
 function allKeys(): string[] {
@@ -26,14 +26,19 @@ function allKeys(): string[] {
   }
 }
 
-export function readCache(symbol: string, years: number, ttlMs = DEFAULT_TTL_MS): CacheEntry | null {
+export function readCache(
+  symbol: string,
+  years: number,
+  mode: 'annual' | 'quarterly' = 'annual',
+  ttlMs = DEFAULT_TTL_MS,
+): CacheEntry | null {
   try {
-    const raw = localStorage.getItem(key(symbol, years));
+    const raw = localStorage.getItem(key(symbol, years, mode));
     if (!raw) return null;
     const entry = JSON.parse(raw) as CacheEntry;
     if (!entry?.dataset || typeof entry.savedAt !== 'number') return null;
     if (Date.now() - entry.savedAt > ttlMs) {
-      localStorage.removeItem(key(symbol, years));
+      localStorage.removeItem(key(symbol, years, mode));
       return null;
     }
     return entry;
@@ -42,10 +47,16 @@ export function readCache(symbol: string, years: number, ttlMs = DEFAULT_TTL_MS)
   }
 }
 
-export function writeCache(symbol: string, years: number, dataset: ReportDataset, ecCost: number): void {
+export function writeCache(
+  symbol: string,
+  years: number,
+  dataset: ReportDataset,
+  ecCost: number,
+  mode: 'annual' | 'quarterly' = 'annual',
+): void {
   const entry: CacheEntry = { dataset, savedAt: Date.now(), ecCost };
   try {
-    localStorage.setItem(key(symbol, years), JSON.stringify(entry));
+    localStorage.setItem(key(symbol, years, mode), JSON.stringify(entry));
   } catch {
     // 配额满：淘汰最旧的一半再试一次；仍失败则放弃（不影响主流程）
     try {
@@ -53,7 +64,7 @@ export function writeCache(symbol: string, years: number, dataset: ReportDataset
         .map((k) => ({ k, t: safeSavedAt(k) }))
         .sort((a, b) => a.t - b.t);
       keys.slice(0, Math.max(1, Math.ceil(keys.length / 2))).forEach(({ k }) => localStorage.removeItem(k));
-      localStorage.setItem(key(symbol, years), JSON.stringify(entry));
+      localStorage.setItem(key(symbol, years, mode), JSON.stringify(entry));
     } catch {
       /* 放弃缓存 */
     }

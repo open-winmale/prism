@@ -125,8 +125,33 @@ const meta = computed(() => store.dataset?.meta);
         </button>
       </div>
 
-      <!-- 场景切换（一次取数，三场景免费切换） -->
-      <ScenarioTabs v-if="isHero" />
+      <!-- 场景切换（一次取数，三场景免费切换）+ 年度/季度口径 -->
+      <div v-if="isHero" class="flex flex-wrap items-center justify-between gap-2">
+        <ScenarioTabs />
+        <div class="flex overflow-hidden rounded-lg border border-slate-200 text-xs">
+          <button
+            class="cursor-pointer px-3 py-1.5 transition"
+            :class="store.dataMode === 'annual' ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'"
+            title="年报口径（经审计），适合年度趋势与同业对比"
+            @click="store.switchMode('annual')"
+          >
+            年度
+          </button>
+          <button
+            class="cursor-pointer px-3 py-1.5 transition"
+            :class="store.dataMode === 'quarterly' ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'"
+            title="最近 8 个报告期；单季值由累计值推导（DIFFQ_YTD 口径），识别季节性与拐点"
+            @click="store.switchMode('quarterly')"
+          >
+            季度
+          </button>
+        </div>
+      </div>
+      <p v-if="isHero && store.dataMode === 'quarterly'" class="rounded bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
+        ⓘ 当前为<b>季度口径</b>：最近 {{ store.dataset?.periods.length }} 个报告期。中国财报 Q2/Q3/Q4 披露的是「年初至今累计值」，
+        本页所有单季数字、单季同比均由累计值差分推导（单季 = 本期累计 − 上期累计），不存在把累计值当单季值的口径错误。
+        年报数据以「年度」口径为准（经审计）。
+      </p>
 
       <!-- 章节锚点条（S1 防踩雷场景时显示） -->
       <ReportNav v-if="isHero && store.scenario === 'mine'" :sections="SECTIONS" :active="activeAnchor" @select="activeAnchor = $event" />

@@ -34,7 +34,8 @@ export const SCENARIOS: Scenario[] = [
     icon: '💎',
     question: '这门生意好不好？',
     headlineModule: 'qualityCheck',
-    modules: ['roe', 'grossMargin', 'netProfit'],
+    // 盈利驱动分解（ROE 三因子归因+拐点）优先于单图模块——揭示「质地」的驱动力与方向
+    modules: ['profitDrivers', 'roe', 'grossMargin', 'netProfit'],
   },
   {
     id: 'cash',
@@ -42,7 +43,8 @@ export const SCENARIOS: Scenario[] = [
     icon: '💰',
     question: '利润是真金白银吗？',
     headlineModule: 'cashFlowQuality',
-    modules: ['cashFlowType', 'cashConversionCycle', 'inventory'],
+    // 季节性分析用单季口径识别渠道行为变化（春节效应/单季异常）——揭示「真伪」的节奏信号
+    modules: ['seasonality', 'cashFlowType', 'cashConversionCycle', 'inventory'],
   },
 ];
 
