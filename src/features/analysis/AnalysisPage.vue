@@ -9,6 +9,8 @@ import ReportNav from '@/components/ReportNav.vue';
 import CtaBanner from '@/components/CtaBanner.vue';
 import SymbolSearch from '@/components/SymbolSearch.vue';
 import DataSourceDialog from '@/components/DataSourceDialog.vue';
+import ScenarioTabs from './ScenarioTabs.vue';
+import ScenarioView from './ScenarioView.vue';
 
 const route = useRoute();
 const store = useAppStore();
@@ -17,7 +19,7 @@ const showMore = ref(false);
 const showSettings = ref(false);
 const activeAnchor = ref('verdict');
 
-// Hero 章节锚点（DESIGN_SPEC §3.3 / §4.2）
+// Hero 章节锚点（S1 防踩雷场景；DESIGN_SPEC §3.3 / §4.2）
 const SECTIONS = [
   { id: 'verdict', label: '判定' },
   { id: 'mine', label: '排雷' },
@@ -25,12 +27,12 @@ const SECTIONS = [
   { id: 'conclusion', label: '结论' },
 ];
 
-// problem → 默认锚点（首页带 problem 进来时落到对应章节）
-const ANCHOR_OF_PROBLEM: Record<ProblemId, string> = {
+// problem → 场景（首页带问题进来时落到对应场景）
+const SCENARIO_OF_PROBLEM: Record<ProblemId, string> = {
   risk: 'mine',
   profitability: 'quality',
-  assetQuality: 'quality',
-  operations: 'quality',
+  assetQuality: 'mine',
+  operations: 'cash',
 };
 
 function syncFromQuery() {
@@ -42,7 +44,8 @@ function syncFromQuery() {
   const p = route.query.problem as ProblemId | undefined;
   if (p) {
     store.setProblem(p);
-    activeAnchor.value = ANCHOR_OF_PROBLEM[p] ?? 'verdict';
+    store.setScenario(SCENARIO_OF_PROBLEM[p] ?? 'mine');
+    activeAnchor.value = 'verdict';
   }
 }
 onMounted(() => {
@@ -78,8 +81,8 @@ const meta = computed(() => store.dataset?.meta);
           :class="store.view === 'report' ? 'bg-brandsoft text-brand' : 'text-slate-600 hover:bg-slate-50'"
           @click="store.setView('report')"
         >
-          🛡 排雷体检报告
-          <span class="ml-1 text-xs font-normal text-slate-400">推荐先看</span>
+          📊 体检报告
+          <span class="ml-1 text-xs font-normal text-slate-400">按场景看结论</span>
         </button>
 
         <button
@@ -122,8 +125,11 @@ const meta = computed(() => store.dataset?.meta);
         </button>
       </div>
 
-      <!-- 章节锚点条（Hero 视图时显示） -->
-      <ReportNav v-if="isHero" :sections="SECTIONS" :active="activeAnchor" @select="activeAnchor = $event" />
+      <!-- 场景切换（一次取数，三场景免费切换） -->
+      <ScenarioTabs v-if="isHero" />
+
+      <!-- 章节锚点条（S1 防踩雷场景时显示） -->
+      <ReportNav v-if="isHero && store.scenario === 'mine'" :sections="SECTIONS" :active="activeAnchor" @select="activeAnchor = $event" />
 
       <!-- 公司条：名称/代码 · 期间 · 香型 · 数据来源标签（真实=emerald / 示例=amber 强化辨识） -->
       <div class="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -162,8 +168,11 @@ const meta = computed(() => store.dataset?.meta);
         }}<template v-if="store.fetchInfo.missing.length > 3"> 等</template>），相关结论已按缺数据降级处理。
       </p>
 
-      <!-- 默认：Hero 报告；否则次级维度单图视图 -->
-      <ReportHero v-if="isHero" :ctx="store.analysisCtx!" />
+      <!-- 默认：场景报告（S1=完整 Hero，S2/S3=场景视图）；否则次级维度单图视图 -->
+      <template v-if="isHero">
+        <ReportHero v-if="store.scenario === 'mine'" :ctx="store.analysisCtx!" />
+        <ScenarioView v-else :scenario-id="store.scenario" :ctx="store.analysisCtx!" />
+      </template>
       <ModuleResult v-else-if="store.lastResult" :result="store.lastResult" />
       <div v-else class="text-slate-400">选择左侧模块开始分析…</div>
     </section>

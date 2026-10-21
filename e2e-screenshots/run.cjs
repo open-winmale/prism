@@ -79,8 +79,21 @@ const VIEWPORTS = [
     ok('清单展开-为什么', (await page.locator('text=/为什么(危险|安全)/').count()) > 0);
     await page.screenshot({ path: `${OUT}/04-check-expanded.png`, fullPage: false });
 
+    // ── 4.5 多场景切换（一次取数，三场景免费切换）──
+    await page.locator('button:has-text("看质地")').click();
+    await page.waitForTimeout(600);
+    ok('S2 看质地：入口问题', (await page.locator('text=这门生意好不好').count()) > 0);
+    ok('S2 看质地：质量分头条', (await page.locator('text=/质量体检得分/').count()) > 0);
+    await page.locator('button:has-text("验真伪")').click();
+    await page.waitForTimeout(600);
+    ok('S3 验真伪：入口问题', (await page.locator('text=利润是真金白银吗').count()) > 0);
+    ok('S3 验真伪：现金流内容', (await page.locator('text=/现金流|八型|收现/').count()) > 0);
+    await page.locator('button:has-text("防踩雷")').first().click();
+    await page.waitForTimeout(600);
+    ok('回 S1：排雷清单仍在', (await page.locator('text=老唐排雷清单').count()) > 0);
+
     // ── 5. 切制造样例 → verdict=高危（行业化没削弱通用能力）──
-    await page.locator('select').first().selectOption({ index: 3 });
+    await page.locator('select').first().selectOption('DEMO-000001');
     await page.waitForTimeout(1500);
     const verdict2 = (await page.locator('main, body').locator('text=/^(安全|关注|高危)$/').first().textContent().catch(() => '')) || '';
     ok('制造样例 verdict=高危', verdict2 === '高危', `实际=${verdict2}`);
@@ -117,8 +130,10 @@ const VIEWPORTS = [
     }
     // desktop 基线
     const pd = await browser.newPage({ viewport: VIEWPORTS[0] });
-    await pd.goto(BASE + '/#/analyze?symbol=DEMO-600519', { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await pd.waitForTimeout(1500);
+    await pd.goto(BASE + '/#/analyze?symbol=600519', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await pd
+      .waitForSelector('button:has-text("经营现金流长期低于净利润")', { timeout: 45000 })
+      .catch(() => {});
     await pd.screenshot({ path: `${BASELINE}/analyze-desktop.png`, fullPage: true });
     await pd.close();
     ok('三视口基线截图已生成', fs.existsSync(`${BASELINE}/analyze-mobile.png`));

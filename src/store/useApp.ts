@@ -6,6 +6,7 @@ import { createProvider, type DataProvider, type SymbolBrief } from '@/data/prov
 import { clearCredentials, loadCredentials, saveCredentials } from '@/data/wm/credentials';
 import { clearTokenCache } from '@/data/wm/auth';
 import type { FetchProgress } from '@/data/wm/dataset';
+import { DEFAULT_SCENARIO } from '@/features/analysis/scenarios';
 
 const proUrl = import.meta.env.VITE_PRO_URL || 'https://winmale.com';
 // 引流归因：开源版所有指向专业版的 CTA 统一带 utm_source
@@ -52,8 +53,15 @@ export const useAppStore = defineStore('app', () => {
   // 行业固定白酒（M1 收窄，IMPLEMENTATION_PLAN.md §4.1）
   const industry = ref<IndustryKey>('liquor');
 
-  // 视图状态：'report' = Hero 报告（默认）；其他值 = 次级维度模块 id
+  // 视图状态：'report' = 场景报告（默认）；其他值 = 次级维度模块 id
   const view = ref<string>('report');
+  // 场景（view === 'report' 时生效）：mine 防踩雷 / quality 看质地 / cash 验真伪
+  const scenario = ref<string>(DEFAULT_SCENARIO);
+
+  function setScenario(id: string) {
+    scenario.value = id;
+    view.value = 'report'; // 场景切换回到报告视图
+  }
   const lastResult = ref<AnalysisResult | null>(null);
 
   const loading = ref(false);
@@ -227,6 +235,8 @@ export const useAppStore = defineStore('app', () => {
     setIndustry,
     normalizeIndustry,
     setView,
+    scenario,
+    setScenario,
     runCurrent,
   };
 });

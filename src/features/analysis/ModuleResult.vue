@@ -3,7 +3,7 @@ import type { AnalysisResult } from '@/engine';
 import EChart from '@/features/charts/EChart.vue';
 import SeverityBadge from '@/components/SeverityBadge.vue';
 
-defineProps<{ result: AnalysisResult }>();
+defineProps<{ result: AnalysisResult; /** 头条强调样式（场景视图的首个结论块） */ highlight?: boolean }>();
 </script>
 
 <template>
@@ -11,7 +11,8 @@ defineProps<{ result: AnalysisResult }>();
     <div
       v-for="b in result.blocks"
       :key="b.id"
-      class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      class="rounded-xl bg-white p-4 shadow-sm"
+      :class="highlight ? 'border-2 border-brand/30' : 'border border-slate-200'"
     >
       <div class="mb-2 flex items-center gap-2">
         <SeverityBadge v-if="b.severity" :severity="b.severity" />

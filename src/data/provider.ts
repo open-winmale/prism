@@ -162,6 +162,11 @@ export class LiveProvider implements DataProvider {
   }
 
   async getDataset(symbol: string, opts: FetchOptions = {}): Promise<DatasetResult> {
+    // 内置样本（制造对照等）直接走快照：0 EC、必然可用，也不该打到接口
+    const builtin = getSample(symbol);
+    if (builtin) {
+      return { dataset: builtin, kind: 'snapshot', cached: false, ecCost: 0, missing: [] };
+    }
     const years = opts.years ?? 5;
     const hit = readCache(symbol, years);
     if (hit) {
