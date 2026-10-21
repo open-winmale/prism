@@ -7,11 +7,14 @@ import ModuleResult from './ModuleResult.vue';
 import ReportHero from './ReportHero.vue';
 import ReportNav from '@/components/ReportNav.vue';
 import CtaBanner from '@/components/CtaBanner.vue';
+import SymbolSearch from '@/components/SymbolSearch.vue';
+import DataSourceDialog from '@/components/DataSourceDialog.vue';
 
 const route = useRoute();
 const store = useAppStore();
 
 const showMore = ref(false);
+const showSettings = ref(false);
 const activeAnchor = ref('verdict');
 
 // Hero 章节锚点（DESIGN_SPEC §3.3 / §4.2）
@@ -32,8 +35,9 @@ const ANCHOR_OF_PROBLEM: Record<ProblemId, string> = {
 
 function syncFromQuery() {
   const symbol = route.query.symbol as string | undefined;
-  if (symbol && symbol !== store.currentSymbol && store.stockList.some((s) => s.symbol === symbol)) {
-    store.selectStock(symbol);
+  // 动态选标的：不再要求 symbol 预置在列表里，任意代码都尝试拉取（快照模式下会给出明确提示）
+  if (symbol && symbol !== store.currentSymbol) {
+    void store.selectStock(symbol);
   }
   const p = route.query.problem as ProblemId | undefined;
   if (p) {
@@ -46,6 +50,15 @@ onMounted(() => {
   store.loadExtraSamples();
 });
 watch(() => route.query, syncFromQuery);
+
+// 切换数据源（填/清除 AppId）后重新加载，让新凭证立即生效
+watch(
+  () => store.dataSource,
+  async () => {
+    await store.init();
+    store.loadExtraSamples();
+  },
+);
 
 const isHero = computed(() => store.view === 'report' && store.ctxReady);
 
@@ -92,6 +105,23 @@ const meta = computed(() => store.dataset?.meta);
     </aside>
 
     <section class="space-y-3">
+      <!-- 动态选标的：搜索框（需 AppId）+ 数据源设置入口 -->
+      <div class="flex items-center gap-2">
+        <SymbolSearch />
+        <button
+          class="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500 transition hover:bg-slate-50"
+          @click="showSettings = true"
+        >
+          {{
+            store.dataSource === 'live'
+              ? store.credential.source === 'env'
+                ? '⚙ 环境变量凭证'
+                : '⚙ 已连接口'
+              : '⚙ 接数据源'
+          }}
+        </button>
+      </div>
+
       <!-- 章节锚点条（Hero 视图时显示） -->
       <ReportNav v-if="isHero" :sections="SECTIONS" :active="activeAnchor" @select="activeAnchor = $event" />
 
@@ -107,8 +137,10 @@ const meta = computed(() => store.dataset?.meta);
               store.dataset?.periods[store.dataset.periods.length - 1]?.slice(0, 4)
             }}
             <template v-if="meta?.fragrance"> · {{ meta.fragrance }}<template v-if="meta?.priceBand"> · {{ meta.priceBand }}</template></template>
-            <span class="ml-1 rounded bg-emerald-50 px-1 text-emerald-600" v-if="store.usingRealData">真实数据</span>
-            <span class="ml-1 rounded bg-amber-50 px-1 text-amber-600" v-else>示例数据</span>
+            <span class="ml-1 rounded bg-emerald-50 px-1 text-emerald-600" v-if="store.dataSource === 'live'">
+              实时接口<template v-if="store.fetchInfo.cached"> · 本地缓存</template>
+            </span>
+            <span class="ml-1 rounded bg-amber-50 px-1 text-amber-600" v-else>内置快照</span>
           </div>
         </div>
         <select
@@ -125,11 +157,17 @@ const meta = computed(() => store.dataset?.meta);
       <p v-if="store.dataset?.disclaimer" class="rounded bg-slate-50 px-3 py-2 text-xs text-slate-500">
         ⓘ {{ store.dataset.disclaimer }}
       </p>
+      <p v-if="store.fetchInfo.missing.length" class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        ⚠ 有 {{ store.fetchInfo.missing.length }} 张报表未取到（{{ store.fetchInfo.missing.slice(0, 3).join('、')
+        }}<template v-if="store.fetchInfo.missing.length > 3"> 等</template>），相关结论已按缺数据降级处理。
+      </p>
 
       <!-- 默认：Hero 报告；否则次级维度单图视图 -->
       <ReportHero v-if="isHero" :ctx="store.analysisCtx!" />
       <ModuleResult v-else-if="store.lastResult" :result="store.lastResult" />
       <div v-else class="text-slate-400">选择左侧模块开始分析…</div>
     </section>
+
+    <DataSourceDialog :open="showSettings" @close="showSettings = false" />
   </div>
 </template>

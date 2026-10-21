@@ -38,7 +38,7 @@ function checkProductionSales(ds: ReportDataset, out: VerifyIssue[]): void {
   }
 }
 
-function checkPeriod(rep: PeriodReport, out: VerifyIssue[]): void {
+function checkPeriod(rep: PeriodReport, out: VerifyIssue[], cashScope?: 'standard' | 'finance-subsidiary'): void {
   const b = rep.balance;
   const inc = rep.income;
   const cf = rep.cashflow;
@@ -89,14 +89,16 @@ function checkPeriod(rep: PeriodReport, out: VerifyIssue[]): void {
   }
 
   // 规则 8：期末现金 与 货币资金 偏离（50% 容差）
-  if (n(cf.cash_end) && n(b.monetary_funds)) {
+  // 设有集团财务公司的企业（茅台、五粮液等），现金流量表期末现金含存放央行/同业款项，
+  // 而这两项不在「货币资金」里 —— 属口径差异，此处只在**非**财务公司口径下才视为待核实项。
+  if (n(cf.cash_end) && n(b.monetary_funds) && cashScope !== 'finance-subsidiary') {
     const rel = absDiff(cf.cash_end as number, b.monetary_funds as number) / Math.max(1, Math.abs(b.monetary_funds as number));
     if (rel > 0.5) {
       out.push({
         level: 'warn',
         field: 'cash_end',
         period: p,
-        msg: `期末现金(${((cf.cash_end as number) / 1e8).toFixed(0)}亿) 与 货币资金(${((b.monetary_funds as number) / 1e8).toFixed(0)}亿) 偏离 ${(rel * 100).toFixed(0)}%（受限资金/存放央行口径可解释，请确认）`,
+        msg: `期末现金(${((cf.cash_end as number) / 1e8).toFixed(0)}亿) 与 货币资金(${((b.monetary_funds as number) / 1e8).toFixed(0)}亿) 偏离 ${(rel * 100).toFixed(0)}%（受限资金口径可解释，请确认）`,
       });
     }
   }
@@ -120,7 +122,8 @@ export function verifyDataset(ds: ReportDataset): VerifyIssue[] {
     }
   }
 
-  for (const rep of ds.reports) checkPeriod(rep, out);
+  const cashScope = ds.meta?.cashScope;
+  for (const rep of ds.reports) checkPeriod(rep, out, cashScope);
 
   // 规则 5：白酒样例合同负债全期缺失
   if (ds.industry === 'liquor') {

@@ -132,7 +132,14 @@ export interface ReportDataset {
   // 同业基准（可选，来自赢麻了后端或内置行业常量），键为指标名，如 gross_margin
   peerBench?: Record<string, number>;
   // 公司画像（白酒）：香型/价格带/数据来源说明
-  meta?: { fragrance?: string; priceBand?: string; sourceNote?: string };
+  // cashScope：期末现金口径。'finance-subsidiary' = 含集团财务公司的存放央行/同业款项，
+  //   此时现金流量表「期末现金」会显著大于资产负债表「货币资金」，属正常口径差异而非异常。
+  meta?: {
+    fragrance?: string;
+    priceBand?: string;
+    sourceNote?: string;
+    cashScope?: 'standard' | 'finance-subsidiary';
+  };
   // 产品结构收入（M2 量价拆解用，M1 先定义 schema）
   segmentRevenue?: { period: string; tier: string; revenue: Num; grossMargin?: Num }[];
 }

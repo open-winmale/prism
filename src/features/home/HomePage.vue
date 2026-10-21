@@ -21,7 +21,7 @@ const cards = computed(() =>
       name: s.name,
       tags: (ds?.meta?.fragrance ? `${ds.meta.fragrance}·${ds.meta.priceBand ?? ''}` : '').replace(/·$/, ''),
       feature: ds?.meta?.sourceNote ?? undefined,
-      sourceReal: store.usingRealData ? true : null,
+      sourceReal: store.dataSource === 'live' ? true : null,
     };
   }),
 );
