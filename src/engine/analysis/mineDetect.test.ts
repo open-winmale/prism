@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { computeDataset, runMineDetect, runRoe, type AnalysisContext } from '@/engine';
+import {
+  computeDataset,
+  mineChecks,
+  mineVerdict,
+  runMineDetect,
+  runRoe,
+  type AnalysisContext,
+} from '@/engine';
 import { maotaiSample } from '@/data/samples/maotai';
 import { manufacturingSample } from '@/data/samples/manufacturing';
 
@@ -19,6 +26,34 @@ describe('财报排雷', () => {
     const r = runMineDetect(ctx(maotaiSample));
     const high = r.blocks.filter((b) => b.severity === 'high');
     expect(high.length).toBe(0);
+  });
+
+  it('缺数据不判安全：关键字段全缺时 verdict=insufficient', () => {
+    const stripped = JSON.parse(JSON.stringify(maotaiSample));
+    const balanceKeys = [
+      'accounts_receivable',
+      'notes_receivable',
+      'receivables_financing',
+      'inventories',
+      'other_receivables',
+      'monetary_funds',
+      'goodwill',
+      'cip',
+      'fixed_assets',
+      'total_assets',
+      'equity_parent',
+      'contract_liabilities',
+    ];
+    const incomeKeys = ['total_revenue', 'net_profit_parent', 'net_profit_excl_nonrecurring'];
+    const cashKeys = ['net_cash_operating'];
+    for (const r of stripped.reports) {
+      for (const k of balanceKeys) delete r.balance[k];
+      for (const k of incomeKeys) delete r.income[k];
+      for (const k of cashKeys) delete r.cashflow[k];
+    }
+    const checks = mineChecks(ctx(stripped));
+    expect(checks.filter((c) => c.status === 'na').length).toBeGreaterThanOrEqual(3);
+    expect(mineVerdict(checks)).toBe('insufficient');
   });
 });
 

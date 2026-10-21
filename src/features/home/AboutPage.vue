@@ -1,59 +1,97 @@
 <script setup lang="ts">
 import { useAppStore } from '@/store/useApp';
+import AppTopbar from '@/components/ui/AppTopbar.vue';
+
 const store = useAppStore();
 </script>
 
 <template>
-  <div class="space-y-6">
-    <section>
-      <h1 class="text-2xl font-bold">关于「财报透视」</h1>
-      <p class="mt-2 leading-7 text-slate-600">
-        财报透视是
-        <a :href="store.proUrl" target="_blank" rel="noopener" class="font-medium text-brand"
-          >赢麻了（winmale.com）</a
-        >
-        的开源免费版前端，聚焦「用财报解决一个投资问题」。它复用赢麻了专业版的分析资产（三大报表口径、ROE
-        杜邦、附注分析、排雷清单），以纯前端、离线可用的方式，把老唐《手把手教你读财报》的方法论产品化。
-      </p>
-    </section>
+  <div class="wb-shell">
+    <AppTopbar>
+      <template #actions>
+        <RouterLink to="/" class="wb-btn">返回首页</RouterLink>
+        <a :href="store.proUrl" target="_blank" rel="noopener" class="wb-btn wb-btn--primary">
+          专业版 ↗
+        </a>
+      </template>
+    </AppTopbar>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4">
-      <h2 class="mt-0 text-lg font-semibold">开源免费版 vs 专业版</h2>
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-        <li>免费版：内置示例数据、核心分析模块、图表化结论，开箱即用，纯前端运行。</li>
-        <li>专业版：用 Open AppId 连接赢麻了后端，获取全市场实时财报、深度同业基准、AI 研判与排雷报告。</li>
-        <li>分析引擎（<code>src/engine</code>）是纯 TypeScript，Vue / React 两端可共享复用。</li>
-      </ul>
-    </section>
+    <main class="wb-home">
+      <section>
+        <div class="wb-home__eyebrow">方法论与数据来源</div>
+        <h1 class="wb-home__title" style="font-size: 26px">关于「财报透视」</h1>
+        <p class="wb-home__sub">
+          财报透视是
+          <a :href="store.proUrl" target="_blank" rel="noopener" class="text-brand">赢麻了（winmale.com）</a>
+          的个人版前端，聚焦「用财报回答四个问题」：利润真不真、生意好不好、有没有雷、贵不贵。
+          它复用专业版的分析框架（三表口径、ROE 杜邦、现金流质量、排雷判据），以纯前端方式运行；
+          数据来自用户自己的开放平台 AppId。
+        </p>
+      </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4">
-      <h2 class="mt-0 text-lg font-semibold">如何接入赢麻了开放平台（获取真实数据）</h2>
-      <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-        <li>在赢麻了开放平台申请 Open AppId。</li>
-        <li>
-          在项目根目录 <code>.env.local</code> 中配置
-          <code>VITE_WINMALE_OPEN_APPID=你的AppId</code> 与
-          <code>VITE_WINMALE_OPEN_BASE=https://open.winmale.com</code>。
-        </li>
-        <li>重启开发服务器，数据提供方自动切换为真实数据；缺失字段仍会优雅降级到示例逻辑。</li>
-      </ol>
-    </section>
+      <section class="wb-section">
+        <div class="wb-section__head">
+          <h2 class="wb-section__title">个人版 vs 专业版</h2>
+        </div>
+        <div class="wb-section__body">
+          <div class="wb-table-wrap">
+            <table class="wb-table">
+              <thead>
+                <tr>
+                  <th>能力</th>
+                  <th>个人版</th>
+                  <th>专业版</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>三表、比率、同比/占比、同业估值</td>
+                  <td>完整可查</td>
+                  <td>完整 + 更长历史 + 更多指标</td>
+                </tr>
+                <tr>
+                  <td>盈利 / 现金 / 债务 / 估值诊断</td>
+                  <td>五维 + 五章</td>
+                  <td>15 个专题 + 45 条判据 + 附注穿透</td>
+                </tr>
+                <tr>
+                  <td>附注、分部、量价、股东、公告、预测、提醒</td>
+                  <td>不做，报告内入口引导</td>
+                  <td>完整</td>
+                </tr>
+                <tr>
+                  <td>使用门槛</td>
+                  <td>零登录；示例 0 EC；AppId 可选</td>
+                  <td>登录 / 会员 / 更完整数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4">
-      <h2 class="mt-0 text-lg font-semibold">贡献与合规</h2>
-      <p class="mt-2 text-sm text-slate-600">
-        欢迎在 GitHub 提交 Issue / PR 完善分析模块与方法论。本工具仅用于学习与教育，所有结论不构成任何投资建议。
-      </p>
-    </section>
+      <section class="wb-section">
+        <div class="wb-section__head">
+          <h2 class="wb-section__title">接入开放平台</h2>
+        </div>
+        <div class="wb-section__body">
+          <ol class="wb-note list-decimal space-y-2 pl-5" style="font-size: 13px; line-height: 22px">
+            <li>在 <a href="https://open.winmale.com/" target="_blank" rel="noopener" class="text-brand">open.winmale.com</a> 免费注册并创建应用。</li>
+            <li>复制 ClientId / ClientSecret，在首页「数据源」里粘贴并验证；凭证只保存在本机浏览器。</li>
+            <li>也可以在本项目根目录 <code>.env.local</code> 配置 <code>VITE_WM_CLIENT_ID</code>、<code>VITE_WM_CLIENT_SECRET</code>、<code>VITE_WM_API_BASE</code>（自部署场景）。</li>
+            <li>连接后首次拉取一家公司约 3.6 万 EC；24 小时内缓存命中 0 EC。季度口径成本更高，需二次确认。</li>
+          </ol>
+          <p class="wb-callout is-warn mt-3">
+            本项目不荐股、不给目标价、不做买卖时点；所有结论均为基于输入数据的客观计算，不构成投资建议。
+          </p>
+        </div>
+      </section>
 
-    <div class="text-center">
-      <a
-        :href="store.proUrl"
-        target="_blank"
-        rel="noopener"
-        class="rounded-full bg-brand px-8 py-3 text-lg font-medium text-white hover:opacity-90"
-        >前往赢麻了专业版 →</a
-      >
-    </div>
+      <footer class="wb-footer">
+        <span>财报透视 · 个人版</span>
+        <span>基于赢麻了专业版分析框架</span>
+        <span>仅供学习，不构成投资建议</span>
+      </footer>
+    </main>
   </div>
 </template>

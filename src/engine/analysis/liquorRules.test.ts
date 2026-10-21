@@ -41,7 +41,7 @@ describe('排雷行业化 · 白酒样例', () => {
     const inv = checks2.find((c) => c.id === 'inventory_growth')!;
     expect(inv.name).toContain('成品');
     expect(inv.status).toBe('safe');
-    expect(inv.evidence).toContain('基酒口径已剔除');
+    expect(inv.evidence).toContain('基酒口径已排除');
   });
 
   it('现金流项：3 年均值判定且不误报', () => {

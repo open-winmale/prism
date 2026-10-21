@@ -44,6 +44,25 @@ const DIR_CN: Record<Exclude<ReturnType<typeof direction>, null>, string> = {
   flat: '平稳 →',
 };
 
+function meanPositive(values: (number | null)[]): number | null {
+  const valid = values.filter((v): v is number => v != null && v > 0);
+  if (!valid.length) return null;
+  return valid.reduce((sum, v) => sum + v, 0) / valid.length;
+}
+
+/** 相对自身历史均值的对数偏离：用于看「本轮变化」由谁主导。 */
+function logDeviation(values: (number | null)[], latest: number | null): number | null {
+  if (latest == null || latest <= 0) return null;
+  const mean = meanPositive(values);
+  if (mean == null || mean <= 0) return null;
+  return Math.log(latest / mean);
+}
+
+/** 对 ROE 水平的对数贡献：ROE = margin × turnover × leverage，取对数后可加。 */
+function logLevel(value: number | null): number | null {
+  return value != null && value > 0 ? Math.log(value) : null;
+}
+
 export function runProfitDrivers(ctx: AnalysisContext): AnalysisResult {
   const t = collectTrend(ctx);
   const last = t.roe.length - 1;
@@ -52,35 +71,75 @@ export function runProfitDrivers(ctx: AnalysisContext): AnalysisResult {
   const turnover = t.turnover[last];
   const leverage = t.leverage[last];
 
-  // 归因：三分量里谁对 ROE 贡献最大（乘法分解，用对数份额近似直观化）
+  // 归因：三分量量纲不同（净利率/周转/乘数），不能直接比原值。
+  // 用「相对自身历史均值的对数偏离」标准化，谁偏离最大，谁才是本轮 ROE 的主导变量。
   const drivers = [
-    { key: 'margin', cn: '产品盈利（净利率）', value: margin, dir: direction(t.margin), unit: '%' as const },
-    { key: 'turnover', cn: '运营效率（资产周转）', value: turnover, dir: direction(t.turnover), unit: '次' as const },
-    { key: 'leverage', cn: '财务杠杆（权益乘数）', value: leverage, dir: direction(t.leverage), unit: 'x' as const },
+    {
+      key: 'margin',
+      cn: '产品盈利（净利率）',
+      value: margin,
+      level: logLevel(margin),
+      dev: logDeviation(t.margin, margin),
+      dir: direction(t.margin),
+      unit: '%' as const,
+    },
+    {
+      key: 'turnover',
+      cn: '运营效率（资产周转）',
+      value: turnover,
+      level: logLevel(turnover),
+      dev: logDeviation(t.turnover, turnover),
+      dir: direction(t.turnover),
+      unit: '次' as const,
+    },
+    {
+      key: 'leverage',
+      cn: '财务杠杆（权益乘数）',
+      value: leverage,
+      level: logLevel(leverage),
+      dev: logDeviation(t.leverage, leverage),
+      dir: direction(t.leverage),
+      unit: 'x' as const,
+    },
   ].filter((d) => d.value != null);
 
-  // 白酒等高毛利行业通常是「产品驱动」；识别主导驱动
-  const dominant = drivers.reduce<typeof drivers[0] | null>(
-    (best, d) => (best == null ? d : d.value! > best.value! ? d : best),
-    null,
-  );
+  // 水平贡献（ln 因子）回答「高 ROE 靠什么」；偏离贡献回答「本轮变化由谁主导」。
+  const dominant = drivers.reduce<(typeof drivers)[0] | null>((best, d) => {
+    if (best == null) return d;
+    return Math.abs(d.level ?? 0) > Math.abs(best.level ?? 0) ? d : best;
+  }, null);
+  const dominantDev = drivers.reduce<(typeof drivers)[0] | null>((best, d) => {
+    if (best == null) return d;
+    return Math.abs(d.dev ?? 0) > Math.abs(best.dev ?? 0) ? d : best;
+  }, null);
 
   const blocks: InsightBlock[] = [];
+  const devText = drivers
+    .filter((d) => d.dev != null)
+    .map((d) => `${d.cn} ${d.dev! >= 0 ? '+' : ''}${(d.dev! * 100).toFixed(1)}%`)
+    .join('，');
 
   // 头条：ROE 驱动结构
   const dirText = drivers.map((d) => `${d.cn} ${DIR_CN[d.dir ?? 'flat']}`).join('，');
   blocks.push({
     id: 'driver_structure',
-    title: `ROE ${(roe == null ? 0 : roe * 100).toFixed(1)}% 由谁驱动：${dominant?.cn ?? '—'}`,
-    severity: (roe ?? 0) >= 0.15 ? 'low' : (roe ?? 0) >= 0.08 ? 'mid' : 'high',
+    title:
+      roe == null
+        ? 'ROE 驱动结构：数据不足'
+        : `ROE ${(roe * 100).toFixed(1)}% 主要由${dominant?.cn ?? '—'}驱动`,
+    severity: roe == null ? 'info' : roe >= 0.15 ? 'low' : roe >= 0.08 ? 'mid' : 'high',
     summary:
-      `最新期净利率 ${(margin == null ? 0 : margin * 100).toFixed(1)}%、总资产周转 ${turnover?.toFixed(2) ?? '—'} 次、权益乘数 ${leverage?.toFixed(2) ?? '—'} 倍。` +
-      `边际方向：${dirText}。` +
-      (dominant?.dir === 'down'
-        ? `注意：主导驱动「${dominant.cn}」正在恶化，ROE 的可持续性存疑——这是比 ROE 水平本身更重要的信号。`
-        : dominant?.dir === 'up'
-          ? `主导驱动「${dominant.cn}」仍在改善，盈利能力处于上行通道。`
-          : `各驱动力基本平稳，ROE 结构稳定。`),
+      roe == null
+        ? '缺少 ROE 或杜邦三因子数据，无法判断盈利驱动结构。'
+        : `最新期净利率 ${margin == null ? '—' : `${(margin * 100).toFixed(1)}%`}、总资产周转 ${turnover?.toFixed(2) ?? '—'} 次、权益乘数 ${leverage?.toFixed(2) ?? '—'} 倍。` +
+          `按对数贡献，ROE 水平主要来自${dominant?.cn ?? '—'}；相对自身历史均值，变化最大的是${dominantDev?.cn ?? '—'}。` +
+          `各因子相对自身均值：${devText || '—'}。` +
+          `边际方向：${dirText}。` +
+          (dominantDev?.dir === 'down'
+            ? `注意：变化主导项「${dominantDev.cn}」正在恶化，ROE 的可持续性存疑——这是比 ROE 水平本身更重要的信号。`
+            : dominantDev?.dir === 'up'
+              ? `变化主导项「${dominantDev.cn}」仍在改善，盈利能力处于上行通道。`
+              : `各驱动力基本平稳，ROE 结构稳定。`),
     charts: [
       trendLine(t.years, [
         { name: 'ROE(归母·杜邦)%', values: t.roe.map((v) => (v == null ? null : v * 100)) },

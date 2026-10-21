@@ -223,7 +223,9 @@ export const dataset: ReportDataset = {
         "total_current_liabilities": 56515990618.96,
         "total_liabilities": 56933264798.1,
         "total_equity": 242011315120.6,
-        "equity_parent": 233105984399.47
+        "equity_parent": 233105984399.47,
+        "share_capital": 1256197800,
+        "retained_earnings": 182787415205.05
       },
       "income": {
         "total_revenue": 174144069958.25,
@@ -281,7 +283,9 @@ export const dataset: ReportDataset = {
         "total_current_liabilities": 49610476817.81,
         "total_liabilities": 49875590112.37,
         "total_equity": 253959253909.07,
-        "equity_parent": 244637811032.18
+        "equity_parent": 244637811032.18,
+        "share_capital": 1252270215,
+        "retained_earnings": 191905148832.21
       },
       "income": {
         "total_revenue": 172054171890.91,

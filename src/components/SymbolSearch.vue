@@ -35,10 +35,9 @@ function pick(symbol: string) {
   open.value = false;
   text.value = '';
   store.clearSearch();
-  // 首页与分析页都会挂本组件：首页需要路由跳转，分析页只换 symbol（路由 query 变化由
-  // AnalysisPage 的 watch 接住）。统一 push，同路由同 query 时 vue-router 不会触发重复导航。
-  router.push({ path: '/analyze', query: { symbol } });
-  store.selectStock(symbol);
+  // 工作台按 /company/:symbol/:workspace 组织；取数由 WorkbenchPage 的 watch 统一触发，
+  // 这里不再直接 selectStock，避免同一标的重复请求。
+  router.push(`/company/${symbol}/overview`);
 }
 
 function onKey(e: KeyboardEvent) {

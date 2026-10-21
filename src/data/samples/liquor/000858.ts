@@ -1,6 +1,6 @@
 import type { ReportDataset } from '@/engine';
 
-// 真实数据：五粮液（000858）2021–2025 年度合并报表（经审计）。
+// 真实数据：五粮液（000858）2021–2024 年度合并报表（经审计）。
 // 来源：赢麻了开放平台 finance raw（同源 wm-statements），2026-10-21 拉取；单位：元。
 export const dataset: ReportDataset = {
   "symbol": "000858",
@@ -9,14 +9,13 @@ export const dataset: ReportDataset = {
   "meta": {
     "fragrance": "浓香",
     "priceBand": "高端",
-    "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2025；单位：元"
+    "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2024；单位：元。2025 年报源数据利润表异常（营收同比约 -54.5%，与资产负债表/现金流量表不勾稽），已从样本移除，待数据源修复后补回。"
   },
   "periods": [
     "2021-12-31",
     "2022-12-31",
     "2023-12-31",
-    "2024-12-31",
-    "2025-12-31"
+    "2024-12-31"
   ],
   "reports": [
     {
@@ -249,64 +248,6 @@ export const dataset: ReportDataset = {
         "net_cash_financing": -19622477387.77,
         "cash_end": 124771274417.68,
         "taxes_paid": 34415656693.45
-      }
-    },
-    {
-      "period": "2025-12-31",
-      "balance": {
-        "monetary_funds": 127014443016.86,
-        "notes_receivable": 42586856.95,
-        "accounts_receivable": 37745419.51,
-        "prepayments": 194996398.52,
-        "other_receivables": 64356368.3,
-        "inventories": 20065336751.2,
-        "other_current_assets": 7968202942.1,
-        "total_current_assets": 164751563109.67,
-        "fixed_assets": 7641231013.35,
-        "cip": 7034061137.4,
-        "right_of_use_assets": 406402594.29,
-        "intangible_assets": 2674326878.83,
-        "development_expenditure": null,
-        "long_term_deferred_expenses": 121712293.75,
-        "deferred_tax_assets": 4813123125.48,
-        "other_noncurrent_assets": 305514631.72,
-        "total_noncurrent_assets": 25232707705.8,
-        "total_assets": 189984270815.47,
-        "short_term_loans": null,
-        "noncurrent_liab_1y": 364149470.84,
-        "lease_liabilities": 44381182.44,
-        "accounts_payable": 8534820869.28,
-        "contract_liabilities": 13459591156.56,
-        "advance_receipts": null,
-        "total_current_liabilities": 67351815353.24,
-        "total_liabilities": 67803587170.33,
-        "total_equity": 122180683645.14,
-        "equity_parent": 119932271234.99
-      },
-      "income": {
-        "total_revenue": 40528509770.23,
-        "operating_cost": 9101956953.59,
-        "tax_and_surtax": 11038061739.93,
-        "selling_expense": 7628615140.51,
-        "admin_expense": 3096502911.23,
-        "rd_expense": 449183817.5,
-        "finance_expense": -2661630589.09,
-        "operating_profit": 12251151014.43,
-        "nonoperating_income": 46397872.57,
-        "nonoperating_expense": 98695848.77,
-        "total_profit": 12198853038.23,
-        "income_tax": 2881739853.55,
-        "net_profit": 9317113184.68,
-        "net_profit_parent": 8954257202.51
-      },
-      "cashflow": {
-        "cash_from_sales": 91400295974.06,
-        "net_cash_operating": 29706259919.13,
-        "capex_cash": 1967407316.36,
-        "net_cash_investing": -1970567930.01,
-        "net_cash_financing": -28391572146.41,
-        "cash_end": 124114690633.67,
-        "taxes_paid": 30797656038.37
       }
     }
   ],

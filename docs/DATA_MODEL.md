@@ -134,3 +134,66 @@ interface FootnoteItem {
 ## 6. 产销量（ProductionSalesRow）
 
 不在三大表内，来自附注或行业数据：`{ period, product?, production?, sales?, inventory?, unit? }`。用于产销量分析模块的「产销率」(sales / production) 等。
+
+---
+
+## 7. v1.0 变更（2026-10-21 · 工作台重做）
+
+### 7.1 raw 字段映射（`data/wm/mapper.ts`）v2
+
+| 目标字段 | raw 字段 | 用途 |
+| --- | --- | --- |
+| `notes_receivable` | `billsReceivable` | **应收票据单列**（不映射合并字段 `noteAccountsReceivable`，避免与 `accountsReceivable` 相加重复） |
+| `receivables_financing` | `financeReceivable` | 应收合计 |
+| `goodwill` | `goodwill` | 商誉检查 |
+| `long_term_loans` / `bonds_payable` | `longTermLoans` / `bondPayable` | 有息负债 |
+| `notes_payable` | `notePayable` | 应付合计 / DPO |
+| `share_capital` | `shareCapital` | Piotroski「未增发」 |
+| `retained_earnings` | `unassignRpofit` | Altman X2 |
+| `net_profit_excl_nonrecurring` | `deductParentNetProfit` | 扣非 / 非经常性损益 |
+| `interest_expense` | `feInterestExpense` | 利息保障 |
+| `total_operating_cost` | `totalOperatingCost` | 营业总成本 |
+| `contract_assets` | `contractAsset` | 合同资产 |
+| `minority_interest` | `minorityEquity` | 少数股东权益 |
+| `trading_fin_assets` | `tradingFinancialAsset` | 交易性金融资产 |
+| `long_term_equity_investment` / `investment_property` | `longEquityInvest` / `investRealestate` | 资产结构 |
+
+不可得（只来自附注/专业版）：存货三明细（原材料/半成品/成品）、分部收入、产销量、附注。
+
+### 7.2 ReportDataset.meta 扩展
+
+| 字段 | 说明 |
+| --- | --- |
+| `auditOpinion?` | 最新一期审计意见（raw `opinionType`），报告头展示 |
+| `dataMode?` | `'annual' \| 'quarterly'`；季度模式标记，引擎据此切换同季同比 |
+
+### 7.3 数据开放面（新增数据源）
+
+| 源 | 内容 | 单位约定（实测 2026-10-21） |
+| --- | --- | --- |
+| `card` | PE/PB/PS(TTM)、ROE(TTM)、`pct_pe_3y`/`pct_pb_3y`（自身 3 年分位）、股息率（TTM/LYR）、营收/净利 TTM 同比、`industry_l1/l2/l3`、`org_type`、`quote_date` | 金额=元；**比率=小数**（0.3324→33.24%） |
+| `members` | 行业成分（symbol/name/mv/pe_ttm/pb/ps_ttm/roe_ttm/close/percent）+ aggregates | 同上；items 在 data 顶层 |
+
+### 7.4 缓存 v2（`data/wm/cache.ts`）
+
+- key 前缀 `report-lens:v2:dataset:`（v1 语义变更自动失效）；entry 增加 `card` / `peers` / `missing`。
+- 读写同时清理 legacy `report-lens:dataset:` 键。
+
+### 7.5 AnalysisContext 扩展
+
+| 字段 | 说明 |
+| --- | --- |
+| `marketValue?` | 最新总市值（元，来自 card.mv）；Altman X4 / SGR payout 用；缺失→相关模型显式「数据不足」 |
+| `dividendYield?` | 股息率 TTM（小数）；SGR 留存率用 |
+
+### 7.6 季度口径（单季视图）
+
+- `quarter.singleQuarterView(reports)`：流量表（利润表/现金流量表）全部换成单季值（DIFFQ_YTD），资产负债表保持时点值；推不出的期次流量置 null。
+- `columns.sameQuarterYoyOf(reports, values)`：同季同比（对去年同季，绝不用相邻期——那是环比）。
+- store：`analysisDataset` = 季度模式下的单季视图数据集；**概览/质量/风险的引擎模块全部消费它**；三表工作台展示同一视图 +「同比(同季)」子列。
+- `mineDetect`：应收/存货增速检查在季度模式下自动切同季同比，计数单位为「期」。
+
+### 7.7 数据校验（verify.ts）新增
+
+- 规则 9：相邻期营收/归母净利同比 >±50% → warn（期次错位/单位错误的信号；五粮液 2025 异常期已据此移除）。
+- `provider` 对所有数据集（快照/缓存/实时）执行 `verifyDataset`：error 抛错阻断渲染，warn 透传 UI。

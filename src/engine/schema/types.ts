@@ -40,13 +40,17 @@ export interface BalanceSheet {
   bonds_payable?: Num; // 应付债券
   lease_liabilities?: Num; // 租赁负债
   accounts_payable?: Num; // 应付账款
+  notes_payable?: Num; // 应付票据
   contract_liabilities?: Num; // 合同负债（白酒=经销商预付款，行业第一领先指标）
   advance_receipts?: Num; // 预收款项（旧准则列示，缺合同负债时兜底）
   total_current_liabilities?: Num; // 流动负债合计
   total_liabilities?: Num; // 负债合计
   // 权益
+  share_capital?: Num; // 股本（Piotroski 是否增发用）
   total_equity?: Num; // 所有者权益合计
   equity_parent?: Num; // 归属于母公司股东的权益
+  minority_interest?: Num; // 少数股东权益
+  retained_earnings?: Num; // 未分配利润（Altman Z 用）
 }
 
 export interface IncomeStatement {
@@ -57,7 +61,9 @@ export interface IncomeStatement {
   admin_expense?: Num; // 管理费用
   rd_expense?: Num; // 研发费用
   finance_expense?: Num; // 财务费用
+  interest_expense?: Num; // 利息费用（财务费用明细，利息保障倍数用）
   operating_profit?: Num; // 营业利润
+  investment_income?: Num; // 投资收益
   nonoperating_income?: Num; // 营业外收入
   nonoperating_expense?: Num; // 营业外支出
   total_profit?: Num; // 利润总额
@@ -65,6 +71,7 @@ export interface IncomeStatement {
   net_profit?: Num; // 净利润
   net_profit_parent?: Num; // 归母净利润
   net_profit_excl_nonrecurring?: Num; // 扣非净利润
+  total_operating_cost?: Num; // 营业总成本
 }
 
 export interface CashFlowStatement {
@@ -147,6 +154,10 @@ export interface ReportDataset {
     priceBand?: string;
     sourceNote?: string;
     cashScope?: 'standard' | 'finance-subsidiary';
+    /** 最新一期审计意见（raw.opinionType）；示例快照可为空 */
+    auditOpinion?: string;
+    /** 数据口径：annual=年报，quarterly=季度报告期 */
+    dataMode?: 'annual' | 'quarterly';
   };
   // 产品结构收入（M2 量价拆解用，M1 先定义 schema）
   segmentRevenue?: { period: string; tier: string; revenue: Num; grossMargin?: Num }[];

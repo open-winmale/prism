@@ -1,19 +1,16 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { AnalysisContext, AnalysisResult, ComputedDataset, IndustryKey, ProblemId, ReportDataset } from '@/engine';
-import { computeDataset, MODULES, runModule } from '@/engine';
-import { createProvider, type DataProvider, type SymbolBrief } from '@/data/provider';
+import type { AnalysisContext, ComputedDataset, IndustryKey, ReportDataset, VerifyIssue } from '@/engine';
+import { computeDataset, singleQuarterView } from '@/engine';
+import { createProvider, clearAllCaches, type DataProvider, type DataSourceKind, type SymbolBrief } from '@/data/provider';
+import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
 import { clearCredentials, loadCredentials, saveCredentials } from '@/data/wm/credentials';
 import { clearTokenCache } from '@/data/wm/auth';
 import type { FetchProgress } from '@/data/wm/dataset';
-import { DEFAULT_SCENARIO } from '@/features/analysis/scenarios';
 
 const proUrl = import.meta.env.VITE_PRO_URL || 'https://winmale.com';
 // 引流归因：开源版所有指向专业版的 CTA 统一带 utm_source
 const proUrlUtm = `${proUrl}?utm_source=report-lens&utm_medium=github`;
-
-// Hero 报告的数据源模块（不在菜单中平铺，由 ReportHero 聚合渲染）
-const HERO_SOURCE_IDS = new Set(['mineDetect', 'qualityCheck', 'cashFlowQuality']);
 
 export const useAppStore = defineStore('app', () => {
   // ── 凭证与数据源 ──
@@ -39,53 +36,86 @@ export const useAppStore = defineStore('app', () => {
       saveCredentials(clientId, clientSecret);
     }
     credential.value = loadCredentials();
+    // 换账户后旧缓存可能属于上一个 AppId，必须清掉，避免串数据。
+    clearAllCaches();
     useProvider(createProvider(credential.value));
+    // 换数据源后立即重拉当前标的，避免继续展示旧账户/快照数据。
+    if (currentSymbol.value) void selectStock(currentSymbol.value, dataMode.value);
   }
 
   // ── 数据状态 ──
   const stockList = ref<SymbolBrief[]>([]);
   const currentSymbol = ref('');
   const dataset = ref<ReportDataset | null>(null);
-  const computedDs = ref<ComputedDataset | null>(null);
+  /** 公司一页纸：估值/股息/成长/行业层级（live 才有） */
+  const card = ref<CompanyCard | null>(null);
+  /** 行业成分：同业表/行业分位（live 才有） */
+  const peers = ref<IndustryMembersPayload | null>(null);
 
-  /** 最近一次取数的成本与降级信息（用于页脚透明化展示） */
-  const fetchInfo = ref<{ ecCost: number; cached: boolean; missing: string[] }>({
+  /**
+   * 分析口径数据集：季度模式下流量表统一换成单季视图（DIFFQ_YTD），
+   * 概览/质量/风险的引擎模块都消费它；三表工作台展示原始披露值（见 FinancialsWorkspace）。
+   * 年度模式下与 dataset 相同。
+   */
+  const analysisDataset = computed<ReportDataset | null>(() => {
+    const ds = dataset.value;
+    if (!ds) return null;
+    if (dataMode.value !== 'quarterly') return ds;
+    const reports = singleQuarterView(ds.reports);
+    return {
+      ...ds,
+      reports,
+      meta: { ...ds.meta, dataMode: 'quarterly' },
+    };
+  });
+
+  /** 引擎共享口径（单期/杜邦指标），基于分析口径数据集 */
+  const computedDs = computed<ComputedDataset | null>(() =>
+    analysisDataset.value ? computeDataset(analysisDataset.value) : null,
+  );
+
+  /** 最近一次取数的成本、来源与降级信息（用于页脚透明化展示） */
+  const fetchInfo = ref<{
+    kind: DataSourceKind | null;
+    ecCost: number;
+    cached: boolean;
+    missing: string[];
+    issues: VerifyIssue[];
+  }>({
+    kind: null,
     ecCost: 0,
     cached: false,
     missing: [],
+    issues: [],
+  });
+
+  /** 报告头展示用：来源按 dataset 实际来源判断，而不是按 provider 判断。 */
+  const sourceLabel = computed(() => {
+    const info = fetchInfo.value;
+    if (info.kind === 'snapshot') return '内置快照 · 0 EC';
+    if (info.kind === 'live') {
+      return info.cached ? '接口取数 · 本地缓存 · 0 EC' : `接口取数 · ${info.ecCost.toLocaleString()} EC`;
+    }
+    return '未取数';
   });
   /** 取数进度（15 张表，给骨架屏用） */
   const progress = ref<FetchProgress | null>(null);
 
-  const problem = ref<ProblemId | null>(null);
-  // 行业固定白酒（M1 收窄，IMPLEMENTATION_PLAN.md §4.1）
   const industry = ref<IndustryKey>('liquor');
-
-  // 视图状态：'report' = 场景报告（默认）；其他值 = 次级维度模块 id
-  const view = ref<string>('report');
-  // 场景（view === 'report' 时生效）：mine 防踩雷 / quality 看质地 / cash 验真伪
-  const scenario = ref<string>(DEFAULT_SCENARIO);
-
-  function setScenario(id: string) {
-    scenario.value = id;
-    view.value = 'report'; // 场景切换回到报告视图
-  }
-  const lastResult = ref<AnalysisResult | null>(null);
 
   const loading = ref(false);
   const error = ref('');
 
-  // 次级维度：全部模块去掉 Hero 数据源（能力保留，不再平铺开门）
-  const secondaryModules = computed(() => MODULES.filter((m) => !HERO_SOURCE_IDS.has(m.id)));
-
-  // Hero 报告的分析上下文（引擎共享口径）
+  // 分析上下文（引擎共享口径）：消费「分析口径数据集」，季度模式即单季视图
   const analysisCtx = computed<AnalysisContext | null>(() => {
-    if (!dataset.value || !computedDs.value) return null;
+    if (!analysisDataset.value || !computedDs.value) return null;
     return {
-      dataset: dataset.value,
+      dataset: analysisDataset.value,
       computed: computedDs.value,
       industry: industry.value,
-      peerBench: dataset.value.peerBench,
+      peerBench: analysisDataset.value.peerBench,
+      marketValue: card.value?.mv ?? null,
+      dividendYield: card.value?.bonus_rate_ttm ?? null,
     };
   });
   const ctxReady = computed(() => analysisCtx.value != null);
@@ -122,29 +152,40 @@ export const useAppStore = defineStore('app', () => {
 
   /** 数据口径：annual=年报（经审计，跟自己比年度趋势）；quarterly=最近 8 个报告期（单季推导） */
   const dataMode = ref<'annual' | 'quarterly'>('annual');
+  /** 年度窗口年数（5/10）；季度口径固定 8 个报告期 */
+  const fetchYears = ref<number>(5);
 
-  async function selectStock(symbol: string, mode?: 'annual' | 'quarterly') {
+  async function selectStock(symbol: string, mode?: 'annual' | 'quarterly', years?: number) {
     const seq = ++selectSeq;
     if (mode && mode !== dataMode.value) dataMode.value = mode;
+    if (years && years !== fetchYears.value) fetchYears.value = years;
     // 立即标记意图：防止与 init() 的自动选中竞态（URL 指定的标的会被首页第一家公司覆盖）
     currentSymbol.value = symbol;
     loading.value = true;
     error.value = '';
     progress.value = null;
+    card.value = null;
+    peers.value = null;
     try {
       const res = await providerInstance.getDataset(symbol, {
         mode: dataMode.value,
-        years: dataMode.value === 'quarterly' ? 8 : 5,
+        years: dataMode.value === 'quarterly' ? 8 : fetchYears.value,
         onProgress: (p) => {
           if (seq === selectSeq) progress.value = p;
         },
       });
       if (seq !== selectSeq) return; // 过期结果丢弃
       dataset.value = res.dataset;
-      computedDs.value = computeDataset(res.dataset);
       industry.value = res.dataset.industry;
-      fetchInfo.value = { ecCost: res.ecCost, cached: res.cached, missing: res.missing };
-      runCurrent();
+      card.value = res.card ?? null;
+      peers.value = res.peers ?? null;
+      fetchInfo.value = {
+        kind: res.kind,
+        ecCost: res.ecCost,
+        cached: res.cached,
+        missing: res.missing,
+        issues: res.issues,
+      };
     } catch (e) {
       if (seq !== selectSeq) return;
       error.value = e instanceof Error ? e.message : String(e);
@@ -160,6 +201,12 @@ export const useAppStore = defineStore('app', () => {
   function switchMode(mode: 'annual' | 'quarterly') {
     if (mode === dataMode.value || !currentSymbol.value) return;
     void selectStock(currentSymbol.value, mode);
+  }
+
+  /** 切换年度窗口（5/10 年；实时模式 10 年约多花 3 万 EC，由 UI 预估提示） */
+  function switchYears(years: number) {
+    if (years === fetchYears.value || !currentSymbol.value) return;
+    void selectStock(currentSymbol.value, dataMode.value, years);
   }
 
   // ── 动态选标的 ──
@@ -194,34 +241,6 @@ export const useAppStore = defineStore('app', () => {
     searching.value = false;
   }
 
-  function setProblem(p: ProblemId) {
-    problem.value = p;
-  }
-
-  function setIndustry(i: IndustryKey) {
-    industry.value = i;
-    runCurrent();
-  }
-
-  // M1 起行业固定白酒：外部传 general 等历史值时归一为 liquor
-  function normalizeIndustry(i: IndustryKey | undefined): IndustryKey {
-    return i === 'manufacturing' ? 'manufacturing' : 'liquor';
-  }
-
-  function setView(v: string) {
-    view.value = v;
-    runCurrent();
-  }
-
-  function runCurrent() {
-    if (view.value === 'report') {
-      lastResult.value = null; // Hero 由组件直取引擎，无需 result
-      return;
-    }
-    if (!dataset.value || !computedDs.value || !analysisCtx.value) return;
-    lastResult.value = runModule(view.value, analysisCtx.value) ?? null;
-  }
-
   return {
     proUrl: proUrlUtm,
     credential,
@@ -230,16 +249,16 @@ export const useAppStore = defineStore('app', () => {
     stockList,
     currentSymbol,
     dataset,
+    analysisDataset,
     computedDs,
+    card,
+    peers,
     fetchInfo,
+    sourceLabel,
     progress,
-    problem,
     industry,
-    view,
-    lastResult,
     loading,
     error,
-    secondaryModules,
     analysisCtx,
     ctxReady,
     init,
@@ -250,14 +269,9 @@ export const useAppStore = defineStore('app', () => {
     searchResults,
     searching,
     clearSearch,
-    setProblem,
-    setIndustry,
-    normalizeIndustry,
-    setView,
-    scenario,
-    setScenario,
     dataMode,
+    fetchYears,
     switchMode,
-    runCurrent,
+    switchYears,
   };
 });

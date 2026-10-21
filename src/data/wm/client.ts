@@ -1,5 +1,13 @@
 import { clearTokenCache, getAccessToken, WmAuthError } from './auth';
-import { DEFAULT_API_BASE, type DiscoverHit, type RawEnvelope, type SkillRunResult, type WmCredentials } from './types';
+import {
+  DEFAULT_API_BASE,
+  type CompanyCardPayload,
+  type DiscoverHit,
+  type IndustryMembersPayload,
+  type RawEnvelope,
+  type SkillRunResult,
+  type WmCredentials,
+} from './types';
 
 // 取数客户端：对齐 ../skillhub 的调用约定，并把服务端约定的细节收在一处：
 //   - body 必须包装为 {"args":{...}}（顶层裸 action 会被拒：ARGS_REQUIRED）
@@ -107,6 +115,51 @@ export class WmClient {
     }
     const body = (await res.json()) as RawEnvelope<{ hits?: DiscoverHit[] }>;
     return body.data?.hits ?? [];
+  }
+
+  /**
+   * 公司一页纸：行情/估值/3 年分位/股息/成长/行业层级。
+   * 单位：金额为元，比率为小数（roe_ttm=0.3324 → 33.24%）。
+   */
+  async fetchCard(
+    symbol: string,
+    signal?: AbortSignal,
+  ): Promise<{ card: CompanyCardPayload['card'] | null; ecCost: number }> {
+    const res = await this.runSkill<CompanyCardPayload>(
+      'wm-data',
+      { action: 'card', symbol, include: 'quote,identity,valuation,growth,quality' },
+      signal,
+    );
+    if (!res.ok) {
+      throw new WmClientError(
+        res.error?.message || '公司一页纸取数失败',
+        res.error?.code || 'CARD_FAILED',
+      );
+    }
+    return { card: res.data?.card ?? null, ecCost: res.ecCost ?? 0 };
+  }
+
+  /**
+   * 行业/指数成分：用于同业表与行业分位。
+   * 备注：items/aggregates 在 data 顶层，不在 result 下。
+   */
+  async fetchIndustryMembers(
+    key: string,
+    kind: 'industry' | 'index' = 'industry',
+    signal?: AbortSignal,
+  ): Promise<{ data: IndustryMembersPayload | null; ecCost: number }> {
+    const res = await this.runSkill<IndustryMembersPayload>(
+      'wm-data',
+      { action: 'members', key, kind, sort: 'mv', limit: 200 },
+      signal,
+    );
+    if (!res.ok) {
+      throw new WmClientError(
+        res.error?.message || '行业成分取数失败',
+        res.error?.code || 'MEMBERS_FAILED',
+      );
+    }
+    return { data: res.data ?? null, ecCost: res.ecCost ?? 0 };
   }
 }
 

@@ -1,0 +1,31 @@
+<script setup lang="ts">
+import type { ChartSpec } from '@/engine';
+import EChart from '@/features/charts/EChart.vue';
+
+// 图表框架：标题 + 单位 + 图 + 脚注（来源 / 数据截至 / 参考线说明）。
+// 每张图都能回答「这条线是什么、数据从哪来、阈值在哪」。
+defineProps<{
+  spec: ChartSpec;
+  source?: string;
+  asOf?: string;
+  /** 覆盖默认高度（px），小倍数用 150 */
+  height?: number;
+}>();
+</script>
+
+<template>
+  <figure class="wb-chart">
+    <figcaption class="wb-chart__head">
+      <span class="wb-chart__title">{{ spec.title }}</span>
+      <span v-if="spec.unit" class="wb-chart__unit">单位：{{ spec.unit }}</span>
+    </figcaption>
+    <EChart :spec="spec" :height="height" />
+    <div class="wb-chart__foot">
+      <span v-if="spec.refLines?.length">
+        参考线：{{ spec.refLines.map((l) => l.label ?? String(l.value)).join('；') }}
+      </span>
+      <span v-if="source">来源：{{ source }}</span>
+      <span v-if="asOf">数据截至 {{ asOf }}</span>
+    </div>
+  </figure>
+</template>

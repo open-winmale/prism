@@ -19,7 +19,7 @@ export const manufacturingSample: ReportDataset = {
       balance: {
         monetary_funds: yi(80), accounts_receivable: yi(10), notes_receivable: 0, receivables_financing: 0,
         prepayments: yi(5), other_receivables: yi(8), inventories: yi(30), other_current_assets: yi(10),
-        total_current_assets: yi(143), fixed_assets: yi(120), cip: yi(30), intangible_assets: yi(20),
+        total_current_assets: yi(143), fixed_assets: yi(120), cip: yi(30), intangible_assets: yi(20), goodwill: 0,
         total_noncurrent_assets: yi(170),         total_assets: yi(313), short_term_loans: yi(60), long_term_loans: yi(40), accounts_payable: yi(15),
         total_liabilities: yi(160), equity_parent: yi(153),
       },
@@ -38,7 +38,7 @@ export const manufacturingSample: ReportDataset = {
       balance: {
         monetary_funds: yi(85), accounts_receivable: yi(20), notes_receivable: 0, receivables_financing: 0,
         prepayments: yi(5), other_receivables: yi(12), inventories: yi(45), other_current_assets: yi(10),
-        total_current_assets: yi(177), fixed_assets: yi(122), cip: yi(33), intangible_assets: yi(20),
+        total_current_assets: yi(177), fixed_assets: yi(122), cip: yi(33), intangible_assets: yi(20), goodwill: 0,
         total_noncurrent_assets: yi(175),         total_assets: yi(352), short_term_loans: yi(60), long_term_loans: yi(40), accounts_payable: yi(18),
         total_liabilities: yi(180), equity_parent: yi(172),
       },
@@ -57,7 +57,7 @@ export const manufacturingSample: ReportDataset = {
       balance: {
         monetary_funds: yi(88), accounts_receivable: yi(40), notes_receivable: 0, receivables_financing: 0,
         prepayments: yi(6), other_receivables: yi(18), inventories: yi(70), other_current_assets: yi(12),
-        total_current_assets: yi(234), fixed_assets: yi(125), cip: yi(35), intangible_assets: yi(20),
+        total_current_assets: yi(234), fixed_assets: yi(125), cip: yi(35), intangible_assets: yi(20), goodwill: 0,
         total_noncurrent_assets: yi(180),         total_assets: yi(414), short_term_loans: yi(60), long_term_loans: yi(40), accounts_payable: yi(20),
         total_liabilities: yi(210), equity_parent: yi(204),
       },
@@ -76,7 +76,7 @@ export const manufacturingSample: ReportDataset = {
       balance: {
         monetary_funds: yi(90), accounts_receivable: yi(70), notes_receivable: 0, receivables_financing: 0,
         prepayments: yi(6), other_receivables: yi(25), inventories: yi(100), other_current_assets: yi(12),
-        total_current_assets: yi(303), fixed_assets: yi(128), cip: yi(38), intangible_assets: yi(22),
+        total_current_assets: yi(303), fixed_assets: yi(128), cip: yi(38), intangible_assets: yi(22), goodwill: 0,
         total_noncurrent_assets: yi(188),         total_assets: yi(491), short_term_loans: yi(60), long_term_loans: yi(40), accounts_payable: yi(22),
         total_liabilities: yi(250), equity_parent: yi(241),
       },
@@ -95,7 +95,7 @@ export const manufacturingSample: ReportDataset = {
       balance: {
         monetary_funds: yi(240), accounts_receivable: yi(110), notes_receivable: 0, receivables_financing: 0,
         prepayments: yi(7), other_receivables: yi(35), inventories: yi(140), other_current_assets: yi(12),
-        total_current_assets: yi(396), fixed_assets: yi(130), cip: yi(40), intangible_assets: yi(25),
+        total_current_assets: yi(396), fixed_assets: yi(130), cip: yi(40), intangible_assets: yi(25), goodwill: 0,
         total_noncurrent_assets: yi(195),         total_assets: yi(591), short_term_loans: yi(130), long_term_loans: yi(70), accounts_payable: yi(25),
         total_liabilities: yi(390), equity_parent: yi(201),
       },

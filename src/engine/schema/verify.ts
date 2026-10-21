@@ -125,6 +125,29 @@ export function verifyDataset(ds: ReportDataset): VerifyIssue[] {
   const cashScope = ds.meta?.cashScope;
   for (const rep of ds.reports) checkPeriod(rep, out, cashScope);
 
+  // 规则 9：相邻期营收/归母净利同比幅度异常（>50%）——通常是期次错位、单位错误或口径混用。
+  for (let i = 1; i < ds.reports.length; i++) {
+    const prev = ds.reports[i - 1];
+    const cur = ds.reports[i];
+    for (const [field, label] of [
+      ['total_revenue', '营业总收入'],
+      ['net_profit_parent', '归母净利润'],
+    ] as const) {
+      const a = prev.income[field];
+      const b = cur.income[field];
+      if (a == null || b == null || a === 0) continue;
+      const yoy = b / Math.abs(a) - 1;
+      if (Math.abs(yoy) > 0.5) {
+        out.push({
+          level: 'warn',
+          field,
+          period: cur.period,
+          msg: `${label}同比 ${(yoy * 100).toFixed(1)}%（${prev.period} → ${cur.period}），幅度异常，请核对期次/单位/口径`,
+        });
+      }
+    }
+  }
+
   // 规则 5：白酒样例合同负债全期缺失
   if (ds.industry === 'liquor') {
     const hasAny = ds.reports.some(

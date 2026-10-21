@@ -126,3 +126,29 @@ export function singleQuarterYoy(cur: number | null, prevYearSameQuarter: number
   if (cur == null || prevYearSameQuarter == null || prevYearSameQuarter === 0) return null;
   return cur / Math.abs(prevYearSameQuarter) - 1;
 }
+
+/**
+ * 数据集的「单季视图」：流量表（利润表/现金流量表）全部换成单季口径，资产负债表保持时点值。
+ * 单季推不出的期次（窗口首期、缺上期累计）→ 该期流量字段全部 null（显示「—」，不按 0 补）。
+ * 用途：季度模式下三表展示与全部引擎模块的统一口径，杜绝「拿累计值当单季值」。
+ */
+export function singleQuarterView(reports: PeriodReport[]): PeriodReport[] {
+  const sq = singleQuarterReports(reports);
+  return reports.map((r, i) => {
+    const q = sq[i];
+    if (q) return q;
+    return {
+      period: r.period,
+      sampling: r.sampling ?? 'Q4',
+      balance: r.balance,
+      income: nullify(r.income) as PeriodReport['income'],
+      cashflow: nullify(r.cashflow) as PeriodReport['cashflow'],
+    };
+  });
+}
+
+function nullify(obj: object): Record<string, Num> {
+  const out: Record<string, Num> = {};
+  for (const k of Object.keys(obj)) out[k] = null;
+  return out;
+}

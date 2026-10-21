@@ -19,7 +19,16 @@ const BS_SAMPLE = {
   totalEquity: 253959253909.07,
   equityAttributabletoParentCompanyShareholders: 244637811032.18,
   accountsReceivable: 2609048.49,
-  advanceReceipts: null, // 缺失
+  // 「应收票据及应收账款」是合并字段，不能与 accountsReceivable 相加；映射必须用 billsReceivable。
+  billsReceivable: 123,
+  noteAccountsReceivable: 456,
+  financeReceivable: 3000,
+  goodwill: 789,
+  longTermLoans: 1000,
+  bondPayable: 2000,
+  shortTermLoans: 5000,
+  unassignRpofit: 4000,
+  advanceReceivable: null, // 缺失
 };
 
 describe('num()', () => {
@@ -63,6 +72,22 @@ describe('mapStatement()', () => {
     expect(bs.total_assets).toBeCloseTo(303834844021.44, 2);
   });
 
+  it('应收账款只取 billsReceivable，不把合并字段 noteAccountsReceivable 重复计入', () => {
+    const bs = mapStatement('balance', BS_SAMPLE);
+    expect(bs.notes_receivable).toBe(123);
+    expect(bs.accounts_receivable).toBe(2609048.49);
+    expect(bs.receivables_financing).toBe(3000);
+  });
+
+  it('补充字段：商誉/长借/债券/未分配利润/短期借款', () => {
+    const bs = mapStatement('balance', BS_SAMPLE);
+    expect(bs.goodwill).toBe(789);
+    expect(bs.long_term_loans).toBe(1000);
+    expect(bs.bonds_payable).toBe(2000);
+    expect(bs.short_term_loans).toBe(5000);
+    expect(bs.retained_earnings).toBe(4000);
+  });
+
   it('映射表内但源缺失 → null 而非 0', () => {
     const bs = mapStatement('balance', BS_SAMPLE);
     expect(bs.advance_receipts).toBeNull();
@@ -86,10 +111,18 @@ describe('mapStatement()', () => {
   });
 
   it('利润表与现金流量表按各自映射表转换', () => {
-    const is = mapStatement('income', { totalOperatingIncome: 100, operateCost: 20, parentNetProfit: 50 });
+    const is = mapStatement('income', {
+      totalOperatingIncome: 100,
+      operateCost: 20,
+      parentNetProfit: 50,
+      deductParentNetProfit: 45,
+      feInterestExpense: 3,
+    });
     expect(is.total_revenue).toBe(100);
     expect(is.operating_cost).toBe(20);
     expect(is.net_profit_parent).toBe(50);
+    expect(is.net_profit_excl_nonrecurring).toBe(45);
+    expect(is.interest_expense).toBe(3);
 
     const cf = mapStatement('cashflow', { salesServices: 120, constructLongAsset: 8 });
     expect(cf.cash_from_sales).toBe(120);

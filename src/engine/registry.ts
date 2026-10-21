@@ -16,6 +16,7 @@ import { cashFlowTypeModule } from './analysis/cashFlowType';
 import { qualityCheckModule } from './analysis/qualityCheck';
 import { cashConversionCycleModule } from './analysis/cashConversionCycle';
 import { profitDriversModule } from './analysis/profitDrivers';
+import { qualityModelsModule } from './analysis/qualityModels';
 import { seasonalityModule } from './analysis/seasonality';
 
 export const MODULES: AnalysisModule[] = [
@@ -24,6 +25,7 @@ export const MODULES: AnalysisModule[] = [
   cashFlowQualityModule,
   qualityCheckModule,
   profitDriversModule,
+  qualityModelsModule,
   seasonalityModule,
   roeModule,
   grossMarginModule,

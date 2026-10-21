@@ -1,17 +1,26 @@
 import type { ReportDataset } from '@/engine';
+import type { CompanyCard, IndustryMembersPayload } from './types';
 
 // 数据集缓存（localStorage）。
 // 存在的理由：一次全量刷新 = 5 年 × 3 表 ≈ 3 万 EC。年报一年才变一次，
 // 缓存 24h 既能吃到新披露，又能把重复访问的 EC 成本降到 0。
 // 配额兜底：写入失败（超出 5MB）时按 savedAt 淘汰最旧的条目后重试一次。
 
-const PREFIX = 'report-lens:dataset:';
+// v2：mapping/字段语义变更（应收票据去重、补商誉/长借/债券等），旧缓存必须失效。
+const PREFIX = 'report-lens:v2:dataset:';
+const LEGACY_PREFIX = 'report-lens:dataset:';
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface CacheEntry {
   dataset: ReportDataset;
   savedAt: number;
   ecCost: number;
+  /** 公司一页纸（估值/股息/行业层级），与数据集一起缓存，避免二次进页面再花 card EC */
+  card?: CompanyCard | null;
+  /** 行业成分（同业表/分位），key 为行业代码 */
+  peers?: IndustryMembersPayload | null;
+  /** 缺失的「期次-表」；缓存命中时也要保留，否则 UI 会误以为完整 */
+  missing?: string[];
 }
 
 function key(symbol: string, years: number, mode: 'annual' | 'quarterly' = 'annual'): string {
@@ -20,7 +29,9 @@ function key(symbol: string, years: number, mode: 'annual' | 'quarterly' = 'annu
 
 function allKeys(): string[] {
   try {
-    return Object.keys(localStorage).filter((k) => k.startsWith(PREFIX));
+    return Object.keys(localStorage).filter(
+      (k) => k.startsWith(PREFIX) || k.startsWith(LEGACY_PREFIX),
+    );
   } catch {
     return [];
   }
@@ -53,8 +64,16 @@ export function writeCache(
   dataset: ReportDataset,
   ecCost: number,
   mode: 'annual' | 'quarterly' = 'annual',
+  extra: { card?: CompanyCard | null; peers?: IndustryMembersPayload | null; missing?: string[] } = {},
 ): void {
-  const entry: CacheEntry = { dataset, savedAt: Date.now(), ecCost };
+  const entry: CacheEntry = {
+    dataset,
+    savedAt: Date.now(),
+    ecCost,
+    card: extra.card ?? null,
+    peers: extra.peers ?? null,
+    missing: extra.missing ?? [],
+  };
   try {
     localStorage.setItem(key(symbol, years, mode), JSON.stringify(entry));
   } catch {

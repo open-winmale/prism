@@ -70,6 +70,69 @@ export interface IndustryAggregates {
   roe_ttm?: number | null;
 }
 
+/**
+ * 公司一页纸（wm-data action=card）。
+ * 单位约定（2026-10-21 实测 600519）：
+ *   - 金额类：元；mv 为总市值（元）
+ *   - 比率类：小数（roe_ttm=0.3324 表示 33.24%；pct_pe_3y=0.3775 表示 37.75%）
+ *   - tr_ttm_yoy / np_ttm_yoy / bonus_rate_ttm 同样是小数
+ */
+export interface CompanyCard {
+  symbol?: string;
+  name?: string;
+  close?: number | null;
+  percent?: number | null;
+  volume?: number | null;
+  amount?: number | null;
+  mv?: number | null;
+  mv_free?: number | null;
+  industry_l1?: string;
+  industry_l2?: string;
+  industry_l3?: string;
+  org_type?: string;
+  pe_ttm?: number | null;
+  pb_ttm?: number | null;
+  ps_ttm?: number | null;
+  roe_ttm?: number | null;
+  pct_pe_3y?: number | null;
+  pct_pb_3y?: number | null;
+  tr_ttm?: number | null;
+  tr_ttm_yoy?: number | null;
+  np_ttm?: number | null;
+  np_ttm_yoy?: number | null;
+  bonus_rate_ttm?: number | null;
+  bonus_rate_lyr?: number | null;
+  ncfo_np_ratio?: number | null;
+  tl_rate?: number | null;
+  ibd_rate?: number | null;
+  quote_date?: string;
+  [key: string]: unknown;
+}
+
+/** card action 返回体 */
+export interface CompanyCardPayload {
+  action?: string;
+  symbol?: string;
+  card?: CompanyCard;
+  freshness?: Record<string, unknown>;
+}
+
+/** members action 返回体（items/aggregates 在 data 顶层，不在 result 下） */
+export interface IndustryMembersPayload {
+  action?: string;
+  kind?: string;
+  key?: string;
+  name?: string;
+  total?: number;
+  count?: number;
+  truncated?: boolean;
+  limit?: number;
+  sort?: string;
+  aggregates?: IndustryAggregates;
+  items?: IndustryMember[];
+  freshness?: Record<string, unknown>;
+}
+
 /** 期次元信息（finance key view 的 periods_meta） */
 export interface PeriodMeta {
   report_date: string; // '2025-12-31T00:00:00Z' 或 '2025-12-31'

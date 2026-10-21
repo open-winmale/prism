@@ -9,10 +9,26 @@ export type ChartType =
   | 'line'
   | 'bar'
   | 'pie'
+  | 'scatter'
   | 'stackedBar'
   | 'groupedBar'
   | 'waterfall'
   | 'table';
+
+/** 参考线：yAxis（默认）或 xAxis 位置画虚线，如「CFO/NP=100%」「行业中位数」 */
+export interface ChartRefLine {
+  value: number;
+  label?: string;
+  axis?: 'x' | 'y';
+}
+
+/** 散点：同业横截面（ROE vs PE 等）；highlight=true 的点单独成系列高亮 */
+export interface ChartPoint {
+  name: string;
+  x: number;
+  y: number;
+  highlight?: boolean;
+}
 
 export interface ChartSpec {
   type: ChartType;
@@ -22,6 +38,12 @@ export interface ChartSpec {
   // 折线 / 柱状
   categories?: string[];
   series?: { name: string; data: (number | null)[]; area?: boolean }[];
+  // 参考线（阈值线 / 中位数线）
+  refLines?: ChartRefLine[];
+  // 散点
+  points?: ChartPoint[];
+  xLabel?: string;
+  yLabel?: string;
   // 饼图
   pie?: { name: string; value: number }[];
   // 表格
@@ -55,6 +77,10 @@ export interface AnalysisContext {
   industry: IndustryKey;
   // 同业基准（可选，来自赢麻了后端或内置行业常量）
   peerBench?: Record<string, number>;
+  /** 最新总市值（元）：Altman Z 的 x4 用；快照/无行情时为 null */
+  marketValue?: number | null;
+  /** 近 12 个月股息率（小数）：SGR 的留存率用；无行情时为 null */
+  dividendYield?: number | null;
 }
 
 export interface AnalysisModule {

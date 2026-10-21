@@ -7,7 +7,10 @@ import { runCashFlowQuality } from './cashFlowQuality';
 import { flowTypeRows } from './cashFlowType';
 import { runQualityCheck, qualityScoreOf } from './qualityCheck';
 import { runCashConversionCycle } from './cashConversionCycle';
+import { runProfitDrivers } from './profitDrivers';
+import { seasonalityOf } from './seasonality';
 import { mineChecks, mineVerdict } from './mineDetect';
+import { dataset as maotaiReal } from '../../data/samples/liquor/600519';
 
 function ctx(ds: typeof maotaiSample | typeof manufacturingSample): AnalysisContext {
   return {
@@ -29,6 +32,27 @@ describe('现金流质量 cashFlowQuality', () => {
 
   it('两样例均能无异常运行', () => {
     expect(runCashFlowQuality(ctx(manufacturingSample)).blocks.length).toBeGreaterThan(0);
+  });
+
+  it('自由现金流按亿元展示（不是元）', () => {
+    const r = runCashFlowQuality(ctx(maotaiSample));
+    const block = r.blocks.find((b) => b.id === 'fcf')!;
+    const values = block.charts[0].series![0].data as (number | null)[];
+    const last = values[values.length - 1]!;
+    expect(last).toBeGreaterThan(1);
+    expect(last).toBeLessThan(5000);
+  });
+});
+
+describe('盈利驱动 profitDrivers', () => {
+  it('用标准化偏离判断主导驱动：茅台真实数据应为净利率，而非权益乘数', () => {
+    const context: AnalysisContext = {
+      dataset: maotaiReal,
+      computed: computeDataset(maotaiReal),
+      industry: 'liquor',
+    };
+    const r = runProfitDrivers(context);
+    expect(r.blocks[0].title).toContain('净利率');
   });
 });
 
@@ -100,5 +124,43 @@ describe('排雷档案 mineChecks（Hero 数据源）', () => {
     for (const c of triggered) {
       if (c.severity === 'high') expect(c.next).toBeTruthy();
     }
+  });
+});
+
+describe('季节性 seasonalityOf（季度口径防二次差分）', () => {
+  const quarterlyView = {
+    ...maotaiReal,
+    meta: { ...maotaiReal.meta, dataMode: 'quarterly' as const },
+    // 单季视图：2025Q2 营收 = 140（不是累计 260）
+    reports: [
+      { period: '2024-12-31', sampling: 'Q4' as const, balance: {}, income: { total_revenue: 500, net_profit_parent: 220 }, cashflow: {} },
+      { period: '2025-03-31', sampling: 'Q1' as const, balance: {}, income: { total_revenue: 120, net_profit_parent: 50 }, cashflow: {} },
+      { period: '2025-06-30', sampling: 'Q2' as const, balance: {}, income: { total_revenue: 140, net_profit_parent: 60 }, cashflow: {} },
+      { period: '2025-09-30', sampling: 'Q3' as const, balance: {}, income: { total_revenue: 160, net_profit_parent: 70 }, cashflow: {} },
+      { period: '2025-12-31', sampling: 'Q4' as const, balance: {}, income: { total_revenue: 180, net_profit_parent: 80 }, cashflow: {} },
+    ],
+  };
+
+  it('季度模式：直接取单季值，绝不再做一次 DIFFQ', () => {
+    const context: AnalysisContext = {
+      dataset: quarterlyView,
+      computed: computeDataset(quarterlyView),
+      industry: 'liquor',
+    };
+    const { points } = seasonalityOf(context);
+    const q2 = points.find((p) => p.year === 2025 && p.q === 2)!;
+    expect(q2.rev).toBe(140); // 二次差分会得到 20
+  });
+
+  it('年度模式：仍按 DIFFQ_YTD 推导（原行为不回退）', () => {
+    const annual = { ...maotaiReal, meta: { ...maotaiReal.meta, dataMode: 'annual' as const } };
+    const context: AnalysisContext = {
+      dataset: annual,
+      computed: computeDataset(annual),
+      industry: 'liquor',
+    };
+    const { points } = seasonalityOf(context);
+    // 年报-only 数据集推不出单季 → points 为空且 skipped 提示
+    expect(points.length).toBe(0);
   });
 });

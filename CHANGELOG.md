@@ -2,11 +2,31 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased] - 2026-10-21
+
+### 🧭 专业版简化工作台（v1.0 重做）
+
+- **工作台重构**：`/company/:symbol/:workspace` 七个工作区（概览/财报/质量/同业/估值/风险/跟踪），取消三场景 Tab 与「更多维度」；桌面左栏、移动底部导航。
+- **深度闭环（对齐专业版「期间 × 科目 × 下钻」）**：三表列组（每期 原值+同比/占比 子列、双行表头、科目行可点）；科目下钻 dialog（趋势/同比/数据 三视图，ESC 关闭）；年份窗口 5/10 年（实时模式 EC 预估）；CSV 按当前列组导出。
+- **可视化系统**：ChartFrame（标题/单位/来源/数据截至/参考线脚注）；ChartSpec 新增 `refLines` 与 `scatter`；收现比、CFO/净利、警戒线、行业中位数等参考线落地；概览 2×2 小倍数（营收/归母净利/毛利率/CFO/净利）。
+- **同业可视化**：ROE vs PE 散点（当前公司高亮 + 中位数十字线）、PE/PB/ROE 横截面分位条；`engine/methods/peersChart.ts` 纯函数（引擎不依赖数据层）。
+- **证据回链**：排雷检查标注对应科目字段，风险展开可「在财报中查看」。
+- **信任修复**：数据来源按 dataset 实际来源标注；缺数据→「数据不足」而非「安全」；`verifyDataset` 接入所有渲染路径；五粮液 2025 异常利润表期次移除；FCF 单位修正；ROE 驱动按对数贡献/偏离标准化；季度声明改为「仅季节性单季、其余需年度」。
+- **数据层**：新增 `card`（PE/PB/PS、3 年分位、股息、行业层级）与 `members`（行业成分/分位）；mapper 补商誉/长借/债券/应收款项融资/扣非/利息费用/股本/未分配利润；修正「应收票据及应收账款」重复计算；缓存升级 v2。
+- **质量模型**：Altman Z、Piotroski F9、Sloan 应计、SGR、ROIC−WACC（WACC 5% 基准）；缺市值/科目不硬算。
+- **UI 系统**：浅色研究终端 token、AppTopbar、CompanyHeader、VerdictStrip、KpiTile、DataTable、StatementTable、LineItemDialog、ChartFrame、RiskRow、InsightList；无 emoji、无卡片墙、数字 tabular-nums、表格 sticky。
+- **验证**：单测 150 条、E2E 50/50（快照 0 EC）、四门禁全绿；三视口基线（home/overview/financials × 1440/768/375）。
+- **季度口径全量单季化**：`singleQuarterView` 把流量表统一换成单季值（DIFFQ_YTD），概览/质量/风险的引擎模块在季度模式下全部消费单季视图；三表季度视图流量单季化、同比切换为**同季对比**（`sameQuarterYoyOf`）；`mineDetect` 应收/存货增速检查季度模式自动切同季同比（计数单位「期」）；推不出的期次显示「—」。**修复**：季节性模块在季度口径下不再对单季视图做二次差分（回归测试覆盖），并挂入质量工作区（仅季度口径展示）。
+- **`/compare` 独立对比页**：复用 `PeerPanels`（KPI 分位 + ROE vs PE 散点 + 分位条 + 全行业表）；快照模式显式降级引导（申请 AppId / 看示例），不伪装数据；新增 404 兜底路由与「分享」深链复制按钮。
+- **旧 IA 清理**：删除 AnalysisPage、ScenarioTabs/View、ReportHero、QualityBars、ModuleResult、ConclusionBlock、VerdictHeader、MineChecklist、scenarios、CompanyPicker、ReportNav、CtaBanner、SeverityBadge、TermTip、Card；store 精简（移除 view/scenario/problem/lastResult）。
+- **文档**：DESIGN_SPEC v2.0（工作台 token/组件/三视口/反 demo 清单）；DATA_MODEL 增补 raw 映射 v2、card/members、缓存 v2、季度单季视图、verify 规则 9。最终单测 158 条。
+- **安全**：换 AppId 清空旧缓存并重拉当前标的；校验失败阻断渲染；金融企业/数据不足显式提示。
+
 ## [0.5.0] - 2026-10-21
 
 ### 📊 内容深度 + 年季口径 + 免费 AppID 引导
 
-- **AppID 申请流程页面化**：设置弹窗改为三步引导（申请说明 → 填写验证 → 完成），首屏绿色横幅提示「完全免费」，支持粘贴后自动验证（换 token 实测，0 业务 EC），首页 CTA 改「免费开通实时数据」。
+- **AppID 申请流程页面化**：设置弹窗改为三步引导（申请说明 → 填写验证 → 完成），首屏绿色横幅提示「完全免费」，支持粘贴后自动验证（验证会发起一次检索，约 620 EC），首页 CTA 改「免费开通实时数据」。
 - **看质地升级 · 盈利驱动分解**（对齐 script 盈利能力页 + 困境反转包）：ROE 三因子归因（产品/效率/杠杆）+ 各驱动力边际方向（拐点侦测）——揭示「高 ROE 靠什么、方向向上还是向下」，比 ROE 水平本身更重要。
 - **验真伪升级 · 季节性分析**（对齐 script 季节性分析 + DIFFQ_YTD）：单季口径营收/利润、**单季 vs 去年同季**的可比同比、各年季节占比矩阵——识别春节效应与渠道行为变化。
 - **年度/季度口径切换**：分析页一键切换。季度模式拉最近 8 个报告期；**单季值由累计值差分推导**（单季 = 本期累计 − 上期累计），杜绝「拿累计值当单季值」的口径错误；口径说明在页面明示。

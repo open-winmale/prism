@@ -18,9 +18,31 @@ interface QuarterPoint {
 
 export function seasonalityOf(ctx: AnalysisContext): { points: QuarterPoint[]; skipped: number } {
   const reports = ctx.dataset.reports;
-  const sqs = singleQuarterReports(reports);
   const points: QuarterPoint[] = [];
   let skipped = 0;
+
+  // 季度模式：ctx.dataset 已是单季视图（store 的 analysisDataset）。
+  // 绝不能再做一次 DIFFQ——单季值再差分会得到「环比的差」，全是垃圾。直接取流量值。
+  if (ctx.dataset.meta?.dataMode === 'quarterly') {
+    for (const r of reports) {
+      const rev = r.income.total_revenue;
+      const npp = r.income.net_profit_parent;
+      if (rev == null && npp == null) {
+        skipped += 1;
+        continue;
+      }
+      points.push({
+        year: Number(r.period.slice(0, 4)),
+        q: Number((r.sampling ?? 'Q4').slice(1)) as 1 | 2 | 3 | 4,
+        rev: rev ?? null,
+        npp: npp ?? null,
+      });
+    }
+    return { points, skipped };
+  }
+
+  // 年度模式：报表是累计值，按 DIFFQ_YTD 推导单季
+  const sqs = singleQuarterReports(reports);
   sqs.forEach((sq, i) => {
     const r = reports[i];
     if (!sq) {

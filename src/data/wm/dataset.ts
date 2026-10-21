@@ -1,4 +1,5 @@
 import type { PeriodReport, ReportDataset } from '@/engine';
+import { formatIssues, hasErrors, verifyDataset, type VerifyIssue } from '@/engine';
 import type { WmClient } from './client';
 import { detectCashScope, pickAuditOpinion, pickName, toPeriodReport } from './mapper';
 import type { FinanceRawPayload, PeriodMeta, RawStatement } from './types';
@@ -40,6 +41,8 @@ export interface FetchOutcome {
   /** 缺失的「期次-表」，如 ['2021-12-31:cf'] */
   missing: string[];
   auditOpinion?: string;
+  /** 数据校验结果：error 阻断渲染，warn 在报告头提示 */
+  issues: VerifyIssue[];
 }
 
 const STATEMENTS = ['bs', 'is', 'cf'] as const;
@@ -211,9 +214,16 @@ export async function fetchDataset(
     meta: {
       sourceNote: `数据源：赢麻了开放平台（合并报表·${modeLabel}）${dateLabels[0]?.slice(0, 4)}–${dateLabels[dateLabels.length - 1]?.slice(0, 4)}；单位：元`,
       cashScope,
+      auditOpinion,
+      dataMode: mode,
     },
     disclaimer: `数据来源：赢麻了开放平台（合并报表${auditOpinion ? `·${auditOpinion}` : ''}），仅供学习，不构成投资建议。`,
   };
 
-  return { dataset, ecCost, missing, auditOpinion };
+  const issues = verifyDataset(dataset);
+  if (hasErrors(issues)) {
+    throw new Error(`数据校验未通过，已阻断渲染：\n${formatIssues(issues)}`);
+  }
+
+  return { dataset, ecCost, missing, auditOpinion, issues };
 }

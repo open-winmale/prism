@@ -27,6 +27,7 @@ export { runQualityCheck, qualityScoreOf } from './analysis/qualityCheck';
 export type { QualityScore, QualitySub } from './analysis/qualityCheck';
 export { runCashConversionCycle } from './analysis/cashConversionCycle';
 export { runProfitDrivers } from './analysis/profitDrivers';
+export { runQualityModels, altmanZ, piotroskiF, growthCapitalOf } from './analysis/qualityModels';
 export { runSeasonality, seasonalityOf } from './analysis/seasonality';
 export * from './registry';
 export { LAOTANG_MINING_RULES, LAOTANG_DUPONT_NOTE, LAOTANG_GROSS_MARGIN_NOTE, LAOTANG_NOTE_QUALITY } from './laotang/rules';

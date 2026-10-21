@@ -1,4 +1,4 @@
-import type { ChartSpec } from '../analysis/define';
+import type { ChartRefLine, ChartSpec } from '../analysis/define';
 import type { Num } from '../schema/types';
 import { periodLabel } from '../utils';
 
@@ -6,7 +6,7 @@ import { periodLabel } from '../utils';
 export function trendLine(
   periods: string[],
   series: { name: string; values: Num[]; area?: boolean }[],
-  opts?: { title?: string; unit?: string; percent?: boolean },
+  opts?: { title?: string; unit?: string; percent?: boolean; refLines?: ChartRefLine[] },
 ): ChartSpec {
   return {
     type: 'line',
@@ -14,6 +14,7 @@ export function trendLine(
     unit: opts?.unit,
     categories: periods.map(periodLabel),
     series: series.map((s) => ({ name: s.name, data: s.values, area: s.area })),
+    refLines: opts?.refLines,
     option: opts?.percent ? { yAxis: { axisLabel: { formatter: '{value}%' } } } : undefined,
   };
 }

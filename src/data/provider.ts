@@ -1,10 +1,11 @@
 import type { IndustryKey, ReportDataset } from '@/engine';
+import { formatIssues, hasErrors, verifyDataset, type VerifyIssue } from '@/engine';
 import { LIQUOR_SAMPLES, SAMPLES, getSample } from './loader';
 import { WmClient } from './wm/client';
 import { loadCredentials, toWmCredentials, type CredentialState } from './wm/credentials';
 import { fetchDataset, type FetchOptions, type FetchProgress } from './wm/dataset';
 import { clearDatasetCache, readCache, writeCache } from './wm/cache';
-import type { DiscoverHit, IndustryAggregates, IndustryMember } from './wm/types';
+import type { DiscoverHit, CompanyCard, IndustryAggregates, IndustryMembersPayload } from './wm/types';
 
 // 数据提供方（双模）。两者出口契约完全一致 —— 引擎与 UI 不感知数据从哪来。
 //
@@ -35,6 +36,12 @@ export interface DatasetResult {
   ecCost: number;
   /** 缺失的「期次-表」，降级而非整页失败 */
   missing: string[];
+  /** 数据校验结果：error 已在 provider 内阻断，warn 供 UI 展示 */
+  issues: VerifyIssue[];
+  /** 公司一页纸：估值/股息/成长/行业层级（live 才有；失败为 null） */
+  card?: CompanyCard | null;
+  /** 行业成分：同业表/行业分位（live 才有；失败为 null） */
+  peers?: IndustryMembersPayload | null;
 }
 
 export interface LiquorPool {
@@ -54,6 +61,15 @@ export interface DataProvider {
   search?(q: string, signal?: AbortSignal): Promise<SymbolBrief[]>;
   /** 白酒行业成分 + 估值中枢（live 专属，失败降级静态清单） */
   liquorPool?(signal?: AbortSignal): Promise<LiquorPool>;
+}
+
+/** 所有数据集在交给 UI 前必须过校验器：error 阻断，warn 透传。 */
+function verifyOrThrow(dataset: ReportDataset): VerifyIssue[] {
+  const issues = verifyDataset(dataset);
+  if (hasErrors(issues)) {
+    throw new Error(`数据校验未通过，已阻断渲染：\n${formatIssues(issues)}`);
+  }
+  return issues;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -81,7 +97,16 @@ export class SnapshotProvider implements DataProvider {
 
   async getDataset(symbol: string): Promise<DatasetResult> {
     const ds = await this.get(symbol);
-    return { dataset: ds, kind: 'snapshot', cached: false, ecCost: 0, missing: [] };
+    return {
+      dataset: ds,
+      kind: 'snapshot',
+      cached: false,
+      ecCost: 0,
+      missing: [],
+      issues: verifyOrThrow(ds),
+      card: null,
+      peers: null,
+    };
   }
 
   async liquorPool(): Promise<LiquorPool> {
@@ -110,15 +135,12 @@ export class LiveProvider implements DataProvider {
   }
 
   async liquorPool(signal?: AbortSignal): Promise<LiquorPool> {
-    // 池子一天内基本不变，先读缓存，避免每次进首页都花 3.8k EC
+    // 池子一天内基本不变，先读缓存，避免每次进首页都花 3.4k EC
     const cached = readPoolCache();
     if (cached) return { ...cached, live: true };
 
-    const res = await this.client.runSkill<{
-      result?: { items?: IndustryMember[]; aggregates?: IndustryAggregates };
-    }>('wm-data', { action: 'members', key: '白酒', kind: 'industry' }, signal);
-
-    const items = (res.data?.result?.items ?? []).map<SymbolBrief>((m) => ({
+    const { data } = await this.client.fetchIndustryMembers('白酒', 'industry', signal);
+    const items = (data?.items ?? []).map<SymbolBrief>((m) => ({
       symbol: m.symbol,
       name: m.name,
       industry: 'liquor',
@@ -130,7 +152,7 @@ export class LiveProvider implements DataProvider {
     }));
     if (items.length === 0) throw new Error('未取到白酒行业成分');
 
-    const pool: LiquorPool = { items, aggregates: res.data?.result?.aggregates ?? {}, live: true };
+    const pool: LiquorPool = { items, aggregates: data?.aggregates ?? {}, live: true };
     writePoolCache(pool);
     return pool;
   }
@@ -164,22 +186,88 @@ export class LiveProvider implements DataProvider {
     // 季度口径必须走接口——快照没有季度期次，也没有「切换口径」的意义。
     const builtin = getSample(symbol);
     if (builtin && mode === 'annual') {
-      return { dataset: builtin, kind: 'snapshot', cached: false, ecCost: 0, missing: [] };
+      return {
+        dataset: builtin,
+        kind: 'snapshot',
+        cached: false,
+        ecCost: 0,
+        missing: [],
+        issues: verifyOrThrow(builtin),
+        card: null,
+        peers: null,
+      };
     }
     const count = opts.years ?? (mode === 'quarterly' ? 8 : 5);
     const hit = readCache(symbol, count, mode);
     if (hit) {
-      return { dataset: hit.dataset, kind: 'live', cached: true, ecCost: 0, missing: [] };
+      return {
+        dataset: hit.dataset,
+        kind: 'live',
+        cached: true,
+        ecCost: 0,
+        missing: hit.missing ?? [],
+        issues: verifyOrThrow(hit.dataset),
+        card: hit.card ?? null,
+        peers: hit.peers ?? null,
+      };
     }
     const onProgress: ((p: FetchProgress) => void) | undefined = opts.onProgress;
     const outcome = await fetchDataset(this.client, symbol, { ...opts, mode, years: count, onProgress });
-    writeCache(symbol, count, outcome.dataset, outcome.ecCost, mode);
+
+    // 估值/同业是「增强层」：失败不阻断三表报告，但必须在 issues 里明示。
+    let card: CompanyCard | null = null;
+    let peers: IndustryMembersPayload | null = null;
+    let marketEc = 0;
+    try {
+      const cardRes = await this.client.fetchCard(symbol, opts.signal);
+      card = cardRes.card ?? null;
+      marketEc += cardRes.ecCost;
+    } catch {
+      /* 降级：估值/行业分位不可用 */
+    }
+    if (card?.industry_l3) {
+      try {
+        const peerRes = await this.client.fetchIndustryMembers(card.industry_l3, 'industry', opts.signal);
+        peers = peerRes.data;
+        marketEc += peerRes.ecCost;
+      } catch {
+        /* 降级：同业表不可用 */
+      }
+    }
+
+    const issues = [...outcome.issues];
+    if (!card) {
+      issues.push({
+        level: 'warn',
+        field: 'card',
+        period: '*',
+        msg: '公司一页纸未取到，估值/股息/行业分位不可用',
+      });
+    }
+    if (!peers) {
+      issues.push({
+        level: 'warn',
+        field: 'members',
+        period: '*',
+        msg: '行业成分未取到，同业对比不可用',
+      });
+    }
+
+    const ecCost = outcome.ecCost + marketEc;
+    writeCache(symbol, count, outcome.dataset, ecCost, mode, {
+      card,
+      peers,
+      missing: outcome.missing,
+    });
     return {
       dataset: outcome.dataset,
       kind: 'live',
       cached: false,
-      ecCost: outcome.ecCost,
+      ecCost,
       missing: outcome.missing,
+      issues,
+      card,
+      peers,
     };
   }
 }

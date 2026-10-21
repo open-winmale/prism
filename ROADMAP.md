@@ -1,10 +1,25 @@
 # Roadmap
 
-> 原则：**一个英雄体验做透，其余维度降级。**
-> **定位（2026-10-21 变更）：先聚焦白酒，其他行业暂不支持。**
-> 完整评审见 [`docs/REVIEW_AND_PLAN.md`](./docs/REVIEW_AND_PLAN.md)（功能 / 设计 / UI / UX / 信息架构逐项评级与修法）。
-> **M1 落地规格**：[`docs/IMPLEMENTATION_PLAN.md`](./docs/IMPLEMENTATION_PLAN.md)（B1–B4 批次、字段与阈值级定义、质量门禁）。
-> **UI/UX 标尺**：[`docs/DESIGN_SPEC.md`](./docs/DESIGN_SPEC.md)（设计 token、组件规格、三视口响应式、§10 还原度验收清单）。
+> 原则：**结论先行、证据随行、口径诚实；做透不做宽。**
+> **定位（2026-10-21 重设）：个人投资者的专业版简化工作台。** 通用 A 股非金融 + 白酒作为第一个行业镜头；不做附注/F10/预测/提醒等专业版数据域。
+> 重设计诊断与实施计划见 [`docs/REDESIGN_DIAGNOSIS.md`](./docs/REDESIGN_DIAGNOSIS.md)。
+> 旧版评审见 [`docs/REVIEW_AND_PLAN.md`](./docs/REVIEW_AND_PLAN.md)（保留作历史基线）。
+> UI/UX 标尺：[`docs/DESIGN_SPEC.md`](./docs/DESIGN_SPEC.md)（旧版规格；工作台新规格待回写）。
+
+## 🔄 v1.0 重做 — 专业版简化工作台（进行中）
+
+- [x] **Phase 0 · 信任修复**：数据来源标签、缺数据→数据不足、`verifyDataset` 接入、五粮液异常期移除、FCF 单位、ROE 驱动标准化、季度声明、环境变量、EC 透明。
+- [x] **Phase 0 · 数据层**：`card`（估值/股息/行业层级）+ `members`（行业成分/分位）、mapper 补商誉/长借/债券/应收款项融资/扣非/利息费用、缓存扩展。
+- [x] **Phase 1 · 工作台壳**：设计 token、AppTopbar、CompanyHeader、WorkspaceNav、KpiTile、VerdictStrip、DataTable、StatementTable、RiskRow、InsightList；路由 `/company/:symbol/:workspace`。
+- [x] **Phase 2 · 概览 + 财报**：结论条、五维 KPI、营收趋势、Top 风险、同业迷你表；三表工作台（年度/季度、原值/同比/占比、CSV）。
+- [x] **Phase 3 · 质量/风险/同业/估值/跟踪（首版）**：盈利驱动、现金流质量、CCC、风险四态、行业 table/分位、PE/PB/PS/PR/股息、跟踪清单。
+- [x] **Phase 4 · Onboarding 首版**：首访阅读提示、示例模式、数据源内联引导、空态替代路径。
+- [x] **Phase 5 · 质量模型首版**：Altman Z、Piotroski F9、Sloan 应计、SGR、ROIC−WACC + 单测（133 tests）。
+- [x] **Phase 5 · 深度与可视化闭环**：三表列组（原值+同比/占比）、科目下钻 dialog、ChartFrame（参考线/来源/截至）、同业散点+分位条、概览 2×2 小倍数、风险证据回链、年份窗口（5/10 年）；E2E 重写 50/50 通过；三视口基线（home/overview/financials）。
+- [x] **Phase 5 · 季度口径全量单季化**：`singleQuarterView` 统一分析口径（概览/质量/风险引擎模块消费单季视图）；三表季度视图单季化 + 同比(同季)；`mineDetect` 季度模式自动切同季同比（计数单位「期」）；单测 +9。
+- [x] **Phase 5 · 旧 IA 清理与文档回写**：删除 AnalysisPage/Scenario*/ReportHero/QualityBars/ModuleResult/ConclusionBlock/VerdictHeader/MineChecklist/scenarios/CompanyPicker/ReportNav/CtaBanner/SeverityBadge/TermTip/Card；store 精简（去掉 view/scenario/problem/lastResult）；DESIGN_SPEC v2.0（工作台规格）与 DATA_MODEL v1.0 变更回写。
+- [x] **Phase 5 · 收尾补全**：季节性模块季度口径修复（单季视图不再二次差分）+ 质量工作区按口径挂载；`/compare` 独立页（PeerPanels 复用，快照降级引导）；分享深链按钮；404 兜底路由；E2E 54/54。
+- [ ] **后续候选（需 live 数据/新依赖决策）**：三表逐行 peer 对比（需 AppId 验证行业成分）、PNG 图片导出（需引入 html-to-image 类依赖或 ECharts getDataURL 方案）。
 
 ## ✅ 已完成 — 上线与引流闭环（2026-10-21）
 

@@ -37,8 +37,12 @@ async function verifyAndSave() {
   }
   step.value = 'verifying';
   try {
-    // 用待验证凭证实测一次（换 token 即可，不消耗业务 EC）
-    const probe = new WmClient({ clientId: id, clientSecret: sec, apiBase: undefined });
+    // 用待验证凭证实测一次检索（discover 约 620 EC）；只验证凭证可用，不拉完整财报。
+    const probe = new WmClient({
+      clientId: id,
+      clientSecret: sec,
+      apiBase: (import.meta.env.VITE_WM_API_BASE as string | undefined)?.trim() || undefined,
+    });
     await probe.discover('茅台');
     store.applyCredentials(id, sec);
     step.value = 'done';
@@ -150,6 +154,9 @@ function close() {
 
         <p class="mt-3 rounded bg-amber-50 px-2 py-1.5 text-xs leading-6 text-amber-700">
           ⚠ 凭证仅保存在<b>本机浏览器</b>（localStorage），不会上传给包括本站在内的任何第三方。公共/共享设备请勿填写。
+        </p>
+        <p class="mt-2 text-xs leading-5 text-slate-500">
+          验证会发起一次检索（约 620 EC），只确认凭证可用，不会拉取完整财报。完整报告首次约 3 万 EC，24 小时内缓存命中 0 EC。
         </p>
 
         <button

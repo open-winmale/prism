@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveSingleQuarter, samplingOrder, singleQuarterReports, singleQuarterYoy, ttmFlowAt } from './quarter';
+import { deriveSingleQuarter, samplingOrder, singleQuarterReports, singleQuarterView, singleQuarterYoy, ttmFlowAt } from './quarter';
 import type { PeriodReport } from './schema/types';
 
 // 口径铁律：Q2/Q3/Q4 是「年初至今累计」，单季 = 本期累计 − 上期累计。
@@ -115,5 +115,48 @@ describe('singleQuarterYoy', () => {
     expect(singleQuarterYoy(100, 0)).toBeNull();
     // 负基数：100 / |−200| − 1 = −0.5（本期比负基数「少了 50%」的直观口径）
     expect(singleQuarterYoy(100, -200)).toBeCloseTo(-0.5, 5);
+  });
+});
+
+describe('singleQuarterView（季度口径统一视图）', () => {
+  const TWO_YEARS: PeriodReport[] = [
+    pr('2024-03-31', 'Q1', 100, 40),
+    pr('2024-06-30', 'Q2', 220, 90),
+    pr('2024-09-30', 'Q3', 350, 150),
+    pr('2024-12-31', 'Q4', 500, 220),
+    pr('2025-03-31', 'Q1', 120, 50),
+    pr('2025-06-30', 'Q2', 260, 110),
+    pr('2025-09-30', 'Q3', 420, 180),
+    pr('2025-12-31', 'Q4', 600, 260),
+  ];
+
+  it('流量全部换成单季值：2025Q2 = 260 − 120(Q1) = 140', () => {
+    const view = singleQuarterView(TWO_YEARS);
+    const q2 = view.find((r) => r.period === '2025-06-30')!;
+    expect(q2.income.total_revenue).toBe(140);
+    expect(q2.cashflow.net_cash_operating).toBeCloseTo(126, 5);
+  });
+
+  it('Q1 单季原样保留（一季报本身就是单季）', () => {
+    const view = singleQuarterView(TWO_YEARS);
+    expect(view[4].income.total_revenue).toBe(120);
+  });
+
+  it('资产负债表保持时点值，不参与差分', () => {
+    const view = singleQuarterView(TWO_YEARS);
+    expect(view[3].balance.total_assets).toBe(1000);
+  });
+
+  it('推不出的期次（窗口首期为 Q3，缺上期累计）流量置 null，不按 0 补', () => {
+    const partial = TWO_YEARS.slice(2); // 从 2024Q3 开始，缺 2024Q2 累计
+    const view = singleQuarterView(partial);
+    expect(view[0].income.total_revenue).toBeNull();
+    expect(view[0].cashflow.net_cash_operating).toBeNull();
+    expect(view[0].balance.total_assets).toBe(1000); // 时点值保留
+  });
+
+  it('视图期次与输入一一对应', () => {
+    const view = singleQuarterView(TWO_YEARS);
+    expect(view.map((r) => r.period)).toEqual(TWO_YEARS.map((r) => r.period));
   });
 });

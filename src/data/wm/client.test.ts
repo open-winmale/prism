@@ -206,6 +206,58 @@ describe('discover', () => {
   });
 });
 
+describe('card / members', () => {
+  it('fetchCard 请求 action=card 并返回 card/EC', async () => {
+    installFetch((req) => {
+      if (req.url.endsWith('/v1/oauth/token')) return jsonResponse({ access_token: 'tok', expires_in: 7200 });
+      return jsonResponse(
+        okEnvelope(
+          {
+            action: 'card',
+            card: { symbol: '600519', name: '贵州茅台', pe_ttm: 20.1, roe_ttm: 0.3324 },
+          },
+          2404,
+        ),
+      );
+    });
+    const client = new WmClient(CREDS);
+    const res = await client.fetchCard('600519');
+    expect(res.card?.name).toBe('贵州茅台');
+    expect(res.card?.roe_ttm).toBeCloseTo(0.3324, 4);
+    expect(res.ecCost).toBe(2404);
+    const call = calls.find((c) => c.url.includes('/v1/skills/'))!;
+    const args = JSON.parse(String(call.init?.body)).args;
+    expect(args.action).toBe('card');
+    expect(args.symbol).toBe('600519');
+    expect(String(args.include)).toContain('valuation');
+  });
+
+  it('fetchIndustryMembers 从 data 顶层取 items（不是 result）', async () => {
+    installFetch((req) => {
+      if (req.url.endsWith('/v1/oauth/token')) return jsonResponse({ access_token: 'tok', expires_in: 7200 });
+      return jsonResponse(
+        okEnvelope(
+          {
+            action: 'members',
+            name: '白酒Ⅲ',
+            total: 21,
+            count: 21,
+            aggregates: { pe_ttm: 20.02, pb: 3.88, roe_ttm: 0.1945 },
+            items: [{ symbol: '600519', name: '贵州茅台', pe_ttm: 20.1, roe_ttm: 0.3324 }],
+          },
+          3447,
+        ),
+      );
+    });
+    const client = new WmClient(CREDS);
+    const res = await client.fetchIndustryMembers('industry.S340501');
+    expect(res.data?.items).toHaveLength(1);
+    expect(res.data?.items?.[0].symbol).toBe('600519');
+    expect(res.data?.aggregates?.pe_ttm).toBeCloseTo(20.02, 2);
+    expect(res.ecCost).toBe(3447);
+  });
+});
+
 describe('describeError', () => {
   it('已知错误码给中文文案', () => {
     expect(describeError(new WmClientError('raw', 'ARGS_REQUIRED'))).toBe('请求参数格式错误');

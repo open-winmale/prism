@@ -8,10 +8,17 @@ import { compareBars } from '../methods/horizontal';
 const DAYS = 365;
 
 function toDays(numerator: number | null, denominator: number | null): number | null {
-  // 周转天数 = 365 × 平均余额 / 流量。分母为 0（如零应收）时该项记 0 天——不是缺数据，
-  // 而是「没有占用」，对 CCC 为利好。仅当分子缺失才返回 null。
-  if (numerator == null || denominator == null || denominator <= 0) return numerator == null ? null : 0;
+  // 周转天数 = 365 × 平均余额 / 流量。
+  // 分子或分母缺失 → null（不猜）；分母为 0（如零应收）→ 0 天，表示「没有占用」。
+  if (numerator == null || denominator == null) return null;
+  if (denominator <= 0) return 0;
   return +((DAYS * numerator) / denominator).toFixed(1);
+}
+
+function sumOptional(...values: (number | null | undefined)[]): number | null {
+  const present = values.filter((v): v is number => v != null);
+  if (!present.length) return null;
+  return present.reduce((sum, v) => sum + v, 0);
 }
 
 export function runCashConversionCycle(ctx: AnalysisContext): AnalysisResult {
@@ -22,12 +29,14 @@ export function runCashConversionCycle(ctx: AnalysisContext): AnalysisResult {
   const rows = reports.map((r, i) => {
     const p = i > 0 ? reports[i - 1] : null;
     const avgOf = (cur: number | null, prev: number | null): number | null => {
-      if (cur == null && prev == null) return null;
-      return ((cur ?? 0) + (prev ?? 0)) / 2;
+      // 本期余额缺失 → 无法算平均（缺失≠0）；首期无上期时用本期余额。
+      if (cur == null) return null;
+      if (prev == null) return cur;
+      return (cur + prev) / 2;
     };
     const ar = avgOf(
-      (r.balance.accounts_receivable ?? 0) + (r.balance.notes_receivable ?? 0) + (r.balance.receivables_financing ?? 0),
-      p ? (p.balance.accounts_receivable ?? 0) + (p.balance.notes_receivable ?? 0) + (p.balance.receivables_financing ?? 0) : null,
+      sumOptional(r.balance.accounts_receivable, r.balance.notes_receivable, r.balance.receivables_financing),
+      p ? sumOptional(p.balance.accounts_receivable, p.balance.notes_receivable, p.balance.receivables_financing) : null,
     );
     const inv = avgOf(r.balance.inventories ?? null, p ? p.balance.inventories ?? null : null);
     const ap = avgOf(r.balance.accounts_payable ?? null, p ? p.balance.accounts_payable ?? null : null);
@@ -65,14 +74,17 @@ export function runCashConversionCycle(ctx: AnalysisContext): AnalysisResult {
   };
 
   const blocks: InsightBlock[] = [];
+  const latestCcc = ccc[ccc.length - 1] ?? null;
 
   blocks.push({
     id: 'ccc',
     title: '现金转换周期（CCC）趋势',
     summary:
-      (ccc[ccc.length - 1] ?? 0) <= 0
-        ? `最新 CCC 为 ${(ccc[ccc.length - 1] ?? 0).toFixed(0)} 天，已为负数——占用上游的资金覆盖了自身应收与存货占用，产业链话语权极强（先款后货、货又卖得快）。`
-        : `最新 CCC 为 ${(ccc[ccc.length - 1] ?? 0).toFixed(0)} 天。CCC 越短，营运资金占用越少、资金效率越高。`,
+      latestCcc == null
+        ? '缺少应收/存货/应付或营收/成本数据，无法计算 CCC。'
+        : latestCcc <= 0
+          ? `最新 CCC 为 ${latestCcc.toFixed(0)} 天，已为负数——占用上游的资金覆盖了自身应收与存货占用，产业链话语权极强（先款后货、货又卖得快）。`
+          : `最新 CCC 为 ${latestCcc.toFixed(0)} 天。CCC 越短，营运资金占用越少、资金效率越高。`,
     charts: [trendLine(labels, [{ name: 'CCC(天)', values: ccc }], { title: '现金转换周期', unit: '天' })],
     laotang: '老唐：能占用别人（预收/应付）而自己被占用少的企业，是「好生意」的典型特征；反之存货与应收越堆越多，要警惕。',
   });
@@ -101,7 +113,12 @@ export function runCashConversionCycle(ctx: AnalysisContext): AnalysisResult {
     charts: [tableChart],
   });
 
-  return { moduleId: 'cashConversionCycle', moduleTitle: '现金转换周期', blocks };
+  return {
+    moduleId: 'cashConversionCycle',
+    moduleTitle: '现金转换周期',
+    blocks,
+    warnings: latestCcc == null ? ['现金转换周期：缺少应收/存货/应付或营收/成本数据，未计算。'] : undefined,
+  };
 }
 
 export const cashConversionCycleModule: AnalysisModule = {
