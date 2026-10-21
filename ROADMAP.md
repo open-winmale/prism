@@ -2,11 +2,11 @@
 
 > 原则：**一个英雄体验做透，其余维度降级。** 每一项都必须服务「排雷/质地体检」这个核心，拒绝大而无用。
 
-## P0 — 上线与引流闭环（进行中）
+## P0 — 上线与引流闭环 ✅（2026-10-21 完成）
 
-- [ ] **1. GitHub 建仓推送**：替换 README badge 占位 `your-org/report-lens`，打 `v0.2.0` tag；验收 = CI 首次运行绿。
-- [ ] **2. 在线 Demo（GitHub Pages）**：vite `base` 子路径配置 + deploy workflow；README 顶部加「在线体验」链接；验收 = 线上地址走通 Hero 全流程，E2E 指向线上 URL 重跑通过。
-- [ ] **3. 引流链路检查**：CTA 加 `utm_source=report-lens`；验收 = 从 demo 点 CTA 可达 winmale.com 正确落地页。
+- [x] **1. GitHub 建仓推送**：[open-winmale/report-lens](https://github.com/open-winmale/report-lens)，tag `v0.2.0`；CI 绿。
+- [x] **2. 在线 Demo（GitHub Pages）**：<https://open-winmale.github.io/report-lens/>，main push 自动部署；线上 E2E 14/14 通过。
+- [x] **3. 引流链路**：全部 CTA 统一带 `utm_source=report-lens&utm_medium=github`。
 
 ## P1 — Hero 做深最后一公里
 
