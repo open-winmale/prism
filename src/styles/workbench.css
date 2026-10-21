@@ -622,6 +622,19 @@ body {
   white-space: nowrap;
 }
 
+.wb-chart__head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.wb-chart__dl {
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
 .wb-chart__foot {
   margin-top: 4px;
   display: flex;

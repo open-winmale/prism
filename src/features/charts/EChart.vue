@@ -135,6 +135,18 @@ function onResize() {
   chart?.resize();
 }
 
+/** 导出当前图表为 PNG（2x 分辨率、白底）；空数据占位时无实例，静默跳过 */
+function downloadPng(filename?: string) {
+  if (!chart) return;
+  const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' });
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(filename || 'chart').replace(/[\\/:*?"<>|]/g, '_')}.png`;
+  a.click();
+}
+
+defineExpose({ downloadPng });
+
 onMounted(() => {
   render();
   window.addEventListener('resize', onResize);

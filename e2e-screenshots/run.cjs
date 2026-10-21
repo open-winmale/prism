@@ -103,6 +103,12 @@ const VIEWPORTS = [
     ok('Piotroski 块', (await page.locator('text=/Piotroski F-Score/').count()) > 0);
     ok('增长与资本回报块', (await page.locator('h2:has-text("增长与资本回报")').count()) > 0);
     ok('WACC 5% 基准声明', (await page.locator('text=/WACC 采用 5% 固定基准/').count()) > 0);
+
+    // 图表 PNG 导出（ECharts getDataURL，无新依赖）
+    const pngPromise = page.waitForEvent('download', { timeout: 10000 });
+    await page.locator('.wb-chart button:has-text("PNG")').first().click();
+    const png = await pngPromise;
+    ok('图表 PNG 导出', png.suggestedFilename().endsWith('.png'), png.suggestedFilename());
     await page.screenshot({ path: `${OUT}/05-quality.png`, fullPage: true });
 
     // ── 5. 风险：四态 + 证据回链 ──
