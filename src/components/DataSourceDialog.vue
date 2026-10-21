@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useAppStore } from '@/store/useApp';
 import { clearTokenCache } from '@/data/wm/auth';
 import { clearAllCaches } from '@/data/provider';
@@ -62,6 +62,18 @@ function clearAll() {
   step.value = 'guide';
 }
 
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape') close();
+}
+watch(
+  () => props.open,
+  (open) => {
+    if (open) window.addEventListener('keydown', onKey);
+    else window.removeEventListener('keydown', onKey);
+  },
+);
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
+
 function close() {
   emit('close');
   // 下次打开回到引导页（已配置用户则回表单态）
@@ -72,7 +84,14 @@ function close() {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div
+    v-if="open"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="连接实时财报数据"
+    @keydown.escape="close"
+  >
     <div class="absolute inset-0 bg-slate-900/40" @click="close" />
     <div class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
       <div class="flex items-start justify-between">
@@ -82,14 +101,13 @@ function close() {
 
       <!-- 免费横幅：降低开通门槛的关键信息 -->
       <div class="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-        <span class="text-base">🎉</span>
         <span><b>完全免费</b>：开放平台公开注册、不收费；数据查询按量计 EC，注册即送额度。</span>
       </div>
 
       <!-- 当前状态 -->
       <div class="mt-3 rounded-lg bg-slate-50 p-3 text-xs leading-6 text-slate-600">
         <div>
-          当前模式：<b>{{ store.dataSource === 'live' ? '✅ 实时接口' : '内置快照（离线演示）' }}</b>
+          当前模式：<b>{{ store.dataSource === 'live' ? '实时接口' : '内置快照（离线演示）' }}</b>
           <template v-if="store.credential.source === 'env'">（凭证来自部署环境变量）</template>
           <template v-else-if="store.credential.source === 'user'">（凭证来自本机填写）</template>
         </div>
@@ -176,7 +194,9 @@ function close() {
 
       <!-- ══ 步骤 3：完成 ══ -->
       <div v-else-if="step === 'done'" class="mt-4 text-center">
-        <div class="text-3xl">✅</div>
+        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-lg text-emerald-700">
+          ✓
+        </div>
         <p class="mt-2 text-sm font-medium text-slate-700">已连接实时数据</p>
         <p class="mt-1 text-xs leading-6 text-slate-500">
           现在可以搜索任意公司、查看最新财报。数据在本地缓存 24 小时，重复查看不再消耗额度。

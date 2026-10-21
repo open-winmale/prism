@@ -29,7 +29,7 @@ const points = computed(() => {
       <span v-if="unit" class="wb-kpi__unit">{{ unit }}</span>
     </div>
     <div v-if="meta" class="wb-kpi__meta">{{ meta }}</div>
-    <div v-if="points" class="wb-kpi__spark" aria-hidden="true">
+    <div v-if="points" class="wb-kpi__spark text-brand" aria-hidden="true">
       <svg viewBox="0 0 100 22" preserveAspectRatio="none">
         <polyline
           :points="points"

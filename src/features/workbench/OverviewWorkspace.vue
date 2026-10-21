@@ -222,13 +222,15 @@ function pct(value: number | null | undefined, digits = 1): string {
       <RouterLink :to="`/company/${ctx.dataset.symbol}/financials`" class="wb-btn">看三表 →</RouterLink>
     </div>
     <div class="wb-section__body wb-mini-grid">
-      <ChartFrame
+      <RouterLink
         v-for="(item, index) in smallMultiples"
         :key="index"
-        :spec="item.spec"
-        :source="item.source"
-        :height="150"
-      />
+        :to="`/company/${ctx.dataset.symbol}/financials`"
+        class="wb-mini-link"
+        title="到财报工作台查看列组与下钻"
+      >
+        <ChartFrame :spec="item.spec" :source="item.source" :height="150" :downloadable="false" />
+      </RouterLink>
     </div>
   </section>
 

@@ -556,6 +556,19 @@ body {
   gap: 14px 20px;
 }
 
+.wb-mini-link {
+  display: block;
+  min-width: 0;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 120ms ease;
+}
+
+.wb-mini-link:hover {
+  border-color: rgb(var(--wb-line-strong));
+}
+
 @media (max-width: 767px) {
   .wb-mini-grid {
     grid-template-columns: 1fr;
