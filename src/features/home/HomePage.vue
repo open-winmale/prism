@@ -137,9 +137,9 @@ function open(symbol: string) {
           </div>
           <div class="wb-home__panel-body">
             <div class="wb-home__popular">
-              <a href="#/company/600519/overview">贵州茅台 600519</a>
-              <a href="#/company/000858/overview">五粮液 000858</a>
-              <a href="#/company/000568/overview">泸州老窖 000568</a>
+              <RouterLink to="/company/600519/overview">贵州茅台 600519</RouterLink>
+              <RouterLink to="/company/000858/overview">五粮液 000858</RouterLink>
+              <RouterLink to="/company/000568/overview">泸州老窖 000568</RouterLink>
             </div>
             <p class="wb-note mt-3">
               示例模式只内置白酒三家。填入自己的开放平台 AppId 后，可搜索任意 A 股非金融公司，并自动获取行业成分与估值。

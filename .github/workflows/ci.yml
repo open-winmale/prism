@@ -28,3 +28,36 @@ jobs:
         run: npm run test
       - name: Build
         run: npm run build
+
+  # E2E（约 101 断言）：ubuntu runner 预装 Chrome stable，playwright-core 以 channel:'chrome' 复用；
+  # 无凭证环境自动走内置快照路径，0 EC
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Start dev server
+        run: |
+          npm run dev &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:5173/report-lens/ -o /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:5173/report-lens/ -o /dev/null
+      - name: Run E2E
+        env:
+          E2E_BASE: http://127.0.0.1:5173/report-lens
+          NO_PROXY: 127.0.0.1,localhost
+        run: node e2e-screenshots/run.cjs
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: |
+            e2e-screenshots/ui-baseline/
+            /tmp/sift-e2e/

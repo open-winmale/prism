@@ -7,11 +7,11 @@
 
 ---
 
-## ⚠️ 接手前必读的三条硬状态（2026-10-22 11:00 UTC+8 更新）
+## ⚠️ 接手前必读的三条硬状态（2026-10-22 11:25 UTC+8 更新）
 
-1. **v1.1.0 已提交并推送**（2026-10-22，48 个文件 + 版本号 1.1.0 + tag v1.1.0；连同此前 3 个本地提交一起上线 Pages）。此后接手 AI 的新改动照常工作，仍守「不擅自 commit/push、中文三段式提交信息」的约定。
-2. **四门禁 2026-10-22 10:40 实测 4/4 全绿**（含上轮缺口的 `npm run build`——429 限的是当时 AI 会话配额，构建本身纯本地无碍）。
-3. **门禁真实数字（2026-10-22 实测）**：单测 **232 passed / 5 skipped**；`npm run typecheck` 0 错；`npm run lint` 0 warning/0 error；E2E **101 断言全绿**（含三表同业横截面、条件选项、下钻解读、异动信号、瀑布图/热力图、Beneish、移动端 375px 专项 6 条、泸州老窖校验零噪声 1 条）；build 通过。三视口基线已重生成。
+1. **v1.1.0 已上线**（2026-10-22 推送，Pages 已部署新 bundle）。其后新一批改动 **8 个文件未 commit**：E2E 进 CI（ci.yml 新增 e2e job）+ playwright-core 转正 devDependency（含 package-lock）+ run.cjs 可移植解析 + 首页 chips 改 RouterLink + 基线图 + CHANGELOG/本文件。等用户确认后再 commit/push；**该批须推送后才能在 GitHub 上验证 e2e job 首跑**。
+2. **四门禁 2026-10-22 11:21 实测 4/4 全绿**（新 playwright-core 1.64.1 解析路径下 E2E 101/101 亦过）。
+3. **门禁真实数字（2026-10-22 实测）**：单测 **232 passed / 5 skipped**；`npm run typecheck` 0 错；`npm run lint` 0 warning/0 error；E2E **101 断言全绿**；build 通过。
 
 ---
 

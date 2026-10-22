@@ -4,7 +4,14 @@
 //   财报（列组表 + 科目下钻 dialog + 子列切换）→ 质量（Altman/Piotroski/增长回报）→
 //   风险（四态 + 证据回链）→ 同业/估值（快照降级提示）→ 跟踪 → 移动端底部导航。
 // 三视口基线截图输出至 e2e-screenshots/ui-baseline/。
-const { chromium } = require('/Users/congwuzhang/.npm/_npx/423231821c231c73/node_modules/playwright-core');
+// playwright-core 解析：优先项目 devDependency（CI 走 npm ci 装的稳定版），
+// 本地历史环境回退到 npx 缓存的绝对路径
+let chromium;
+try {
+  ({ chromium } = require('playwright-core'));
+} catch {
+  ({ chromium } = require('/Users/congwuzhang/.npm/_npx/423231821c231c73/node_modules/playwright-core'));
+}
 const fs = require('fs');
 const path = require('path');
 

@@ -2,6 +2,14 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased] - 2026-10-22
+
+### 🔧 E2E 进 CI + 小项清理
+
+- **E2E 进 CI**：CI 新增独立 `e2e` job——ubuntu runner（预装 Chrome stable）起 dev server 跑 `e2e-screenshots/run.cjs` 全量 101 断言；失败时上传截图与基线为 artifact 便于排查。此前 E2E 仅本地跑。
+- **playwright-core 转正为 devDependency**（稳定版 1.64.x）：E2E 脚本不再硬编码本机 npx 缓存绝对路径——优先 `require('playwright-core')`（CI 与 npm ci 路径），本地历史环境回退原路径。无凭证环境自动走内置快照路径，CI 上 0 EC。
+- **首页热门公司 chips 改 RouterLink**：与路由器集成（正替代手写 hash href），渲染结果不变。
+
 ## [1.1.0] - 2026-10-22
 
 ### 🔀 三表逐行同业横截面（/compare）
