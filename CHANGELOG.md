@@ -4,6 +4,12 @@
 
 ## [Unreleased] - 2026-10-22
 
+### 🏷️ 项目更名 report-lens → prism
+
+- 新建 [`open-winmale/prism`](https://github.com/open-winmale/prism) 仓库整体迁移重发布；在线地址变为 <https://open-winmale.github.io/prism/>（旧地址冻结在 v1.1.0 并挂迁移横幅，旧仓库归档）。
+- 改名面：vite base 路径、npm 包名、CI/E2E 的本地 URL、utm_source、README 徽章与链接、活文档引用；产品中文名「财报透视」不变。
+- **localStorage 键前缀 `report-lens:*` 有意保留**：改前缀会让所有用户已缓存的数据集与 token 失效、重新取数烧 EC，内部命名空间不值得换。
+
 ### 🔧 E2E 进 CI + 小项清理
 
 - **E2E 进 CI**：CI 新增独立 `e2e` job——ubuntu runner（预装 Chrome stable）起 dev server 跑 `e2e-screenshots/run.cjs` 全量 101 断言；失败时上传截图与基线为 artifact 便于排查。此前 E2E 仅本地跑。

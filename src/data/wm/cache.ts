@@ -7,6 +7,8 @@ import type { CompanyCard, IndustryMembersPayload } from './types';
 // 配额兜底：写入失败（超出 5MB）时按 savedAt 淘汰最旧的条目后重试一次。
 
 // v2：mapping/字段语义变更（应收票据去重、补商誉/长借/债券等），旧缓存必须失效。
+// 注：localStorage 键前缀沿用 report-lens:（项目已更名 prism）——改前缀会让所有
+// 用户已缓存的数据集与 token 失效、重新取数烧 EC，内部命名空间不值得。
 const PREFIX = 'report-lens:v2:dataset:';
 const LEGACY_PREFIX = 'report-lens:dataset:';
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;

@@ -1,9 +1,9 @@
-# report-lens 交接提示词（v4 · 2026-10-22 · Phase 6 价值深度 + 表达力 + 375px 专项完成之后）
+# prism（财报透视）交接提示词（v4 · 2026-10-22 · Phase 6 价值深度 + 表达力 + 375px 专项 + 更名 prism 之后）
 
 > 用途：把本文件全文交给下一个 AI（Claude/Codex/其他），授权其在指定约束内继续开发本项目。
-> 项目根：`/Users/congwuzhang/work/src/end/sift`（report-lens）
-> 线上（旧版 v0.5）：https://open-winmale.github.io/report-lens/ ｜ GitHub：`open-winmale/report-lens`（push main 自动部署 Pages）
-> 本地预览：`npm run dev` → http://127.0.0.1:5173/report-lens/ （base 是 `/report-lens/`，根路径 302 过去）
+> 项目根：`/Users/congwuzhang/work/src/end/sift`（**prism**，2026-10-22 前名 report-lens）
+> 线上：https://open-winmale.github.io/prism/ ｜ GitHub：`open-winmale/prism`（push main 自动部署 Pages；旧仓库 report-lens 已归档冻结）
+> 本地预览：`npm run dev` → http://127.0.0.1:5173/prism/ （base 是 `/prism/`，根路径 302 过去）
 
 ---
 

@@ -1,5 +1,5 @@
 /* eslint-disable */
-// report-lens E2E（v1 工作台 IA）：
+// prism（原 report-lens）E2E（v1 工作台 IA）：
 //   首页（搜索/示例入口）→ /company/600519 概览（结论条/KPI/小倍数/Top 风险）→
 //   财报（列组表 + 科目下钻 dialog + 子列切换）→ 质量（Altman/Piotroski/增长回报）→
 //   风险（四态 + 证据回链）→ 同业/估值（快照降级提示）→ 跟踪 → 移动端底部导航。
@@ -15,7 +15,7 @@ try {
 const fs = require('fs');
 const path = require('path');
 
-const BASE = process.env.E2E_BASE || 'http://127.0.0.1:5173/report-lens';
+const BASE = process.env.E2E_BASE || 'http://127.0.0.1:5173/prism';
 const OUT = '/tmp/sift-e2e';
 const BASELINE = path.join(__dirname, 'ui-baseline');
 fs.mkdirSync(OUT, { recursive: true });

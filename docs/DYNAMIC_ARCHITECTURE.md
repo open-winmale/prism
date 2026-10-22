@@ -97,7 +97,7 @@ cashflow:annual, audit_opinion, date_sas, h_ccf, h_ncf, h_ncff, h_ncfi, h_ncfo, 
 
 ### 候选 C · 复用已有的开放平台 Go 后端
 
-在 `../openplatform/backend`（Go + MongoDB，已有鉴权/限速/计量）加一组 report-lens 专用 endpoint。
+在 `../openplatform/backend`（Go + MongoDB，已有鉴权/限速/计量）加一组 prism 专用 endpoint。
 
 - ✅ 基础设施现成
 - ❌ 开源用户拿不到该后端 → 开源项目无法独立运行

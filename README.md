@@ -1,6 +1,6 @@
-# 财报透视 · 赢麻了开源版
+# 财报透视（Prism）· 赢麻了开源版
 
-[![CI](https://github.com/open-winmale/report-lens/actions/workflows/ci.yml/badge.svg)](https://github.com/open-winmale/report-lens/actions/workflows/ci.yml)
+[![CI](https://github.com/open-winmale/prism/actions/workflows/ci.yml/badge.svg)](https://github.com/open-winmale/prism/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Vue 3](https://img.shields.io/badge/Vue-3.5-42b883.svg)](https://vuejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6.svg)](https://www.typescriptlang.org)
@@ -8,7 +8,9 @@
 > 个人投资者的专业版简化版：保留专业版的「期间 × 科目 × 对比 × 下钻」证据链，去掉机构级复杂度。
 > 报告化工作台 · 三表 · 质量 · 同业 · 估值 · 风险 · 跟踪 —— 结论先行，每个数字可核查。
 
-**🌐 在线体验（免安装）**：<https://open-winmale.github.io/report-lens/>
+**🌐 在线体验（免安装）**：<https://open-winmale.github.io/prism/>
+
+> 本项目前身为 `open-winmale/report-lens`，2026-10-22 起更名迁移至本仓库。
 
 **财报透视**是一个面向基本面投资者的前端开源项目：打开一家公司，先看到「稳健 / 关注 / 高风险 / 数据不足」的结论，再沿着财报、质量、同业、估值、风险、跟踪七个工作区逐层核查。它把赢麻了专业版的分析框架（ROE 杜邦、现金流质量、排雷判据）移植成纯 TS 引擎，开源可见、逻辑透明。
 

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] **项目更名迁移 report-lens → prism**（2026-10-22：新建 `open-winmale/prism` 仓库整体迁移，Pages 部署至 https://open-winmale.github.io/prism/ ；旧仓库加迁移横幅后归档。产品中文名「财报透视」不变；localStorage 键前缀 `report-lens:*` 有意保留——改前缀会让全部用户缓存/token 失效并重新取数烧 EC）。
+
 > 原则：**结论先行、证据随行、口径诚实；做透不做宽。**
 > **定位（2026-10-21 重设）：个人投资者的专业版简化工作台。** 通用 A 股非金融 + 白酒作为第一个行业镜头；不做附注/F10/预测/提醒等专业版数据域。
 > 重设计诊断与实施计划见 [`docs/REDESIGN_DIAGNOSIS.md`](./docs/REDESIGN_DIAGNOSIS.md)。

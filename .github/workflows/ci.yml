@@ -44,13 +44,13 @@ jobs:
         run: |
           npm run dev &
           for i in $(seq 1 60); do
-            curl -sf http://127.0.0.1:5173/report-lens/ -o /dev/null && break
+            curl -sf http://127.0.0.1:5173/prism/ -o /dev/null && break
             sleep 1
           done
-          curl -sf http://127.0.0.1:5173/report-lens/ -o /dev/null
+          curl -sf http://127.0.0.1:5173/prism/ -o /dev/null
       - name: Run E2E
         env:
-          E2E_BASE: http://127.0.0.1:5173/report-lens
+          E2E_BASE: http://127.0.0.1:5173/prism
           NO_PROXY: 127.0.0.1,localhost
         run: node e2e-screenshots/run.cjs
       - name: Upload screenshots on failure

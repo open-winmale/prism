@@ -128,7 +128,7 @@ function close() {
             >
             （赢麻了开放平台），注册 / 登录 —— <b>免费，支持微信扫码</b>
           </li>
-          <li>进入「应用管理」→ 创建应用（名字随意，如 report-lens），系统自动生成 <b>ClientId</b> 和 <b>ClientSecret</b></li>
+          <li>进入「应用管理」→ 创建应用（名字随意，如 prism），系统自动生成 <b>ClientId</b> 和 <b>ClientSecret</b></li>
           <li>回到这里粘贴两项凭证，本页会先验证再保存</li>
         </ol>
 

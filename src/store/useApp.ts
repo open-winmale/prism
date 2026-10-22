@@ -11,7 +11,7 @@ import type { FetchProgress } from '@/data/wm/dataset';
 
 const proUrl = import.meta.env.VITE_PRO_URL || 'https://winmale.com';
 // 引流归因：开源版所有指向专业版的 CTA 统一带 utm_source
-const proUrlUtm = `${proUrl}?utm_source=report-lens&utm_medium=github`;
+const proUrlUtm = `${proUrl}?utm_source=prism&utm_medium=github`;
 
 export const useAppStore = defineStore('app', () => {
   // ── 凭证与数据源 ──
