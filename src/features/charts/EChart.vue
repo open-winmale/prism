@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import * as echarts from 'echarts/core';
-import { BarChart, LineChart, PieChart, ScatterChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { BarChart, HeatmapChart, LineChart, PieChart, ScatterChart } from 'echarts/charts';
+import { GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { ChartSpec } from '@/engine';
 
 // 仅注册用到的模块，控制打包体积
-echarts.use([BarChart, LineChart, PieChart, ScatterChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
+echarts.use([
+  BarChart,
+  HeatmapChart,
+  LineChart,
+  PieChart,
+  ScatterChart,
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+  VisualMapComponent,
+  CanvasRenderer,
+]);
 
 const props = defineProps<{ spec: ChartSpec; /** 自定义高度（px）；缺省用响应式默认 */ height?: number }>();
 const el = ref<HTMLElement | null>(null);
@@ -24,6 +35,8 @@ const isEmpty = computed(() => {
   if (s.type === 'pie') return !s.pie || s.pie.length === 0;
   if (s.type === 'table') return !s.table || s.table.rows.length === 0;
   if (s.type === 'scatter') return !s.points || s.points.length === 0;
+  if (s.type === 'waterfall') return !s.waterfall || s.waterfall.values.every((v) => v == null);
+  if (s.type === 'heatmap') return !s.heatmap || s.heatmap.values.every((v) => v == null);
   const series = s.series ?? [];
   return series.every((x) => x.data.every((v) => v == null));
 });
@@ -65,6 +78,143 @@ function build(s: ChartSpec): Record<string, unknown> {
       ],
     };
   }
+  // 瀑布：总数柱整根落地，增量柱按正负悬浮在累计值上。
+  // 配色遵循 A 股「涨红跌绿」：增加 #b91c1c、减少 #0f766e，首尾总数柱用品牌蓝。
+  if (s.type === 'waterfall') {
+    const w = s.waterfall;
+    if (!w) return {};
+    const cats = w.categories;
+    const isTotal = w.isTotal ?? cats.map((_, i) => i === 0 || i === cats.length - 1);
+    const placeholder: (number | null)[] = [];
+    const bars: Record<string, unknown>[] = [];
+    let running = 0;
+    cats.forEach((_, i) => {
+      const v = w.values[i] ?? null;
+      if (v == null) {
+        placeholder.push(null);
+        bars.push({ value: null, itemStyle: { color: 'transparent' } });
+        return;
+      }
+      if (isTotal[i]) {
+        placeholder.push(0);
+        bars.push({ value: v, itemStyle: { color: '#1d4ed8' } });
+        running = v;
+        return;
+      }
+      if (v >= 0) {
+        placeholder.push(running);
+        bars.push({ value: v, itemStyle: { color: '#b91c1c' } });
+      } else {
+        placeholder.push(running + v);
+        bars.push({ value: -v, itemStyle: { color: '#0f766e' } });
+      }
+      running += v;
+    });
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: { name?: string; data?: { value?: number } }[]) => {
+          const idx = cats.indexOf(params[0]?.name ?? '');
+          const raw = idx >= 0 ? w.values[idx] : null;
+          const p = params.find((x) => x.data && x.data.value != null);
+          if (p == null) return `${params[0]?.name ?? ''}：—`;
+          const sign = (raw ?? 0) > 0 && !isTotal[idx] ? '+' : '';
+          return `${params[0]?.name ?? ''}：${sign}${(raw ?? 0).toFixed(1)}${s.unit ?? ''}`;
+        },
+      },
+      grid: { left: 56, right: 18, top: 28, bottom: 56 },
+      xAxis: { type: 'category', data: cats, axisLabel: { interval: 0, fontSize: 10, rotate: cats.length > 6 ? 30 : 0 } },
+      yAxis: { type: 'value', name: s.unit, nameTextStyle: { fontSize: 10 } },
+      series: [
+        {
+          type: 'bar',
+          stack: 'wf',
+          data: placeholder,
+          itemStyle: { color: 'transparent' },
+          emphasis: { itemStyle: { color: 'transparent' } },
+          silent: true,
+          tooltip: { show: false },
+        },
+        {
+          type: 'bar',
+          stack: 'wf',
+          data: bars,
+          barWidth: '56%',
+          // 门线（如 M-Score 的 −2.22 / −1.78）画在增量柱系列上，随悬浮柱一起对齐坐标系
+          markLine: markLineOf(s),
+          label: {
+            show: true,
+            position: 'top',
+            fontSize: 10,
+            formatter: (p: { dataIndex: number; data: { value: number } }) => {
+              const raw = w.values[p.dataIndex];
+              if (raw == null) return '';
+              const sign = raw > 0 && !isTotal[p.dataIndex] ? '+' : '';
+              return `${sign}${raw.toFixed(1)}`;
+            },
+          },
+        },
+      ],
+      ...s.option,
+    };
+  }
+  // 热力矩阵：季节占比、共同比逐年结构——一眼看出哪一行哪一列偏离了常态
+  if (s.type === 'heatmap') {
+    const h = s.heatmap;
+    if (!h) return {};
+    const nCols = h.cols.length;
+    const data: [number, number, number | null][] = [];
+    h.rows.forEach((_, ri) => {
+      h.cols.forEach((__, ci) => {
+        data.push([ci, ri, h.values[ri * nCols + ci] ?? null]);
+      });
+    });
+    const valid = h.values.filter((v): v is number => v != null);
+    const min = h.visualMin ?? (valid.length ? Math.min(...valid) : 0);
+    const max = h.visualMax ?? (valid.length ? Math.max(...valid) : 1);
+    return {
+      tooltip: {
+        position: 'top',
+        formatter: (p: { data: [number, number, number | null] }) => {
+          const [ci, ri, v] = p.data;
+          if (v == null) return `${h.rows[ri]} · ${h.cols[ci]}：—`;
+          return `${h.rows[ri]} · ${h.cols[ci]}：${(v * 100).toFixed(1)}${h.unit ?? '%'}`;
+        },
+      },
+      grid: { left: 92, right: 20, top: 20, bottom: 64 },
+      xAxis: { type: 'category', data: h.cols, splitArea: { show: true }, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'category', data: h.rows, splitArea: { show: true }, axisLabel: { fontSize: 10 } },
+      visualMap: {
+        min,
+        max,
+        calculable: false,
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 4,
+        itemWidth: 12,
+        itemHeight: 80,
+        textStyle: { fontSize: 10 },
+        formatter: (v: number) => `${(v * 100).toFixed(0)}${h.unit ?? '%'}`,
+        inRange: { color: ['#f1f5f9', '#bfdbfe', '#1d4ed8'] },
+      },
+      series: [
+        {
+          type: 'heatmap',
+          data,
+          label: {
+            show: true,
+            fontSize: 10,
+            formatter: (p: { data: [number, number, number | null] }) =>
+              p.data[2] == null ? '—' : `${(p.data[2] * 100).toFixed(0)}`,
+          },
+          itemStyle: { borderColor: '#ffffff', borderWidth: 1 },
+          emphasis: { itemStyle: { borderColor: '#1d4ed8', borderWidth: 2 } },
+        },
+      ],
+      ...s.option,
+    };
+  }
   if (s.type === 'scatter') {
     const pts = s.points ?? [];
     const normal = pts.filter((p) => !p.highlight).map((p) => [p.x, p.y]);
@@ -104,22 +254,41 @@ function build(s: ChartSpec): Record<string, unknown> {
     };
   }
   const isLine = s.type === 'line';
-  const series = (s.series || []).map((x) => ({
-    name: x.name,
-    type: isLine ? 'line' : 'bar',
-    data: x.data,
-    smooth: isLine,
-    areaStyle: isLine && x.area ? {} : undefined,
-    stack: s.type === 'stackedBar' ? 'total' : undefined,
-    markLine: markLineOf(s),
-  }));
+  // 双轴组合：任一系列声明 axis:'right' 即启用右轴（例：营收柱 + 增速线）
+  const useRight = (s.series || []).some((x) => x.axis === 'right');
+  const series = (s.series || []).map((x) => {
+    const t = x.as ?? (isLine ? 'line' : 'bar');
+    return {
+      name: x.name,
+      type: t,
+      data: x.data,
+      smooth: t === 'line',
+      areaStyle: t === 'line' && x.area ? {} : undefined,
+      stack: s.type === 'stackedBar' && !useRight ? 'total' : undefined,
+      yAxisIndex: x.axis === 'right' ? 1 : 0,
+      // 参考线只挂在左轴系列上，避免右轴系列把阈值画到错误坐标系
+      markLine: x.axis === 'right' ? undefined : markLineOf(s),
+    };
+  });
   return {
     color: SERIES_COLORS,
     tooltip: { trigger: 'axis' },
     legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 52, right: 18, top: 36, bottom: 52 },
+    grid: { left: 52, right: useRight ? 52 : 18, top: 36, bottom: 52 },
     xAxis: { type: 'category', data: s.categories, axisLabel: { interval: 0 } },
-    yAxis: { type: 'value', name: s.unit },
+    yAxis: [
+      { type: 'value', name: s.unit, nameTextStyle: { fontSize: 10 } },
+      ...(useRight
+        ? [
+            {
+              type: 'value',
+              name: s.yLabelRight,
+              nameTextStyle: { fontSize: 10 },
+              splitLine: { show: false },
+            },
+          ]
+        : []),
+    ],
     series,
     ...s.option,
   };

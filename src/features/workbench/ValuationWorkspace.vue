@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { quantile } from '@/engine/methods/peersChart';
 import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
 
 const props = defineProps<{
@@ -27,6 +28,27 @@ const pr = computed(() => {
   if (pe == null || roe == null || roe <= 0) return null;
   return pe / (roe * 100);
 });
+
+const items = computed(() => props.peers?.items ?? []);
+
+/**
+ * 行业横截面分位：当前公司在行业成分股里排第几。
+ * 与上方「自身 3 年分位」是两回事——一个比同行，一个比自己的历史，
+ * 两者同时低才叫便宜，只有一个低说明不了问题。
+ * 样本来自 members 接口，0 额外 EC。
+ */
+const quantileBars = computed(() => {
+  const list = items.value;
+  if (!list.length) return [];
+  return [
+    quantile('PE(TTM)', props.card?.pe_ttm, list.map((i) => i.pe_ttm), (v) => `${v.toFixed(1)}x`),
+    quantile('PB', props.card?.pb_ttm, list.map((i) => i.pb), (v) => `${v.toFixed(2)}x`),
+    quantile('PS(TTM)', props.card?.ps_ttm, list.map((i) => i.ps_ttm), (v) => `${v.toFixed(2)}x`),
+    quantile('ROE(TTM)', props.card?.roe_ttm, list.map((i) => i.roe_ttm), (v) => `${(v * 100).toFixed(1)}%`),
+  ];
+});
+
+const sampleSize = computed(() => items.value.length);
 
 function num(value: number | null | undefined, digits = 1): string {
   return value == null || !Number.isFinite(value) ? '—' : value.toFixed(digits);
@@ -99,6 +121,36 @@ function yi(value: number | null | undefined): string {
             </div>
             <p class="wb-note mt-1">PB 分位对银行、周期股更有参考意义；成长股需结合 ROE。</p>
           </div>
+        </div>
+
+        <!-- 行业横截面分位：四条并列，与上方自身历史分位形成交叉验证 -->
+        <div class="mt-5">
+          <div class="wb-section__sub">行业横截面分位（越低 = 在同行中越靠前）</div>
+          <div class="mt-2 grid gap-3 md:grid-cols-2">
+            <div v-for="bar in quantileBars" :key="bar.label">
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="text-xs text-slate-600">{{ bar.label }}</span>
+                <span class="wb-num text-xs text-slate-600">
+                  {{ bar.display }}
+                  <span v-if="bar.rank != null" class="ml-1">
+                    分位 {{ (bar.rank * 100).toFixed(0) }}%
+                  </span>
+                  <span v-else class="ml-1">分位 —</span>
+                </span>
+              </div>
+              <div class="wb-meter mt-1">
+                <i :style="{ width: `${Math.round((bar.rank ?? 0) * 100)}%` }" />
+              </div>
+              <p class="wb-note mt-1">
+                行业中位数 {{ bar.median == null ? '—' : bar.label === 'ROE(TTM)' ? `${(bar.median * 100).toFixed(1)}%` : `${bar.median.toFixed(1)}x` }}
+              </p>
+            </div>
+          </div>
+          <p class="wb-note mt-2">
+            横截面分位比的是同行，自身 3 年分位比的是自己的历史，两码事。
+            样本 {{ sampleSize }} 家{{ peers?.truncated ? '（样本已截断）' : '' }}；
+            PE 分位对亏损公司不适用，应改看 PB / PS。
+          </p>
         </div>
 
         <div class="mt-5 grid gap-4 md:grid-cols-3">

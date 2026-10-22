@@ -13,6 +13,7 @@ export type ChartType =
   | 'stackedBar'
   | 'groupedBar'
   | 'waterfall'
+  | 'heatmap'
   | 'table';
 
 /** 参考线：yAxis（默认）或 xAxis 位置画虚线，如「CFO/NP=100%」「行业中位数」 */
@@ -30,26 +31,60 @@ export interface ChartPoint {
   highlight?: boolean;
 }
 
+/** 系列级画法：用于「柱 + 线」双轴组合（如营收柱 + 增速线） */
+export interface ChartSeries {
+  name: string;
+  data: (number | null)[];
+  area?: boolean;
+  /** 该系列画成柱还是线；缺省跟随 spec.type */
+  as?: 'bar' | 'line';
+  /** 该系列画在右轴；存在即启用双轴 */
+  axis?: 'left' | 'right';
+}
+
+/** 瀑布条目：isTotal 标记首尾的总数柱（整根落地），其余为增量柱（按正负悬浮） */
+export interface WaterfallItem {
+  categories: string[];
+  values: (number | null)[];
+  isTotal?: boolean[];
+}
+
+/** 热力矩阵：行优先扁平数组，长度 = rows.length × cols.length */
+export interface HeatmapData {
+  rows: string[];
+  cols: string[];
+  values: (number | null)[];
+  /** 色阶范围；缺省自动取数据范围 */
+  visualMin?: number;
+  visualMax?: number;
+  /** 单位后缀，默认 %（值为 0~1 的比例） */
+  unit?: string;
+}
+
 export interface ChartSpec {
   type: ChartType;
   title?: string;
   unit?: string;
   note?: string;
-  // 折线 / 柱状
+  // 折线 / 柱状 / 组合
   categories?: string[];
-  series?: { name: string; data: (number | null)[]; area?: boolean }[];
+  series?: ChartSeries[];
   // 参考线（阈值线 / 中位数线）
   refLines?: ChartRefLine[];
   // 散点
   points?: ChartPoint[];
   xLabel?: string;
   yLabel?: string;
+  /** 右轴名称（存在右轴系列时必填，否则图例看不出单位） */
+  yLabelRight?: string;
   // 饼图
   pie?: { name: string; value: number }[];
   // 表格
   table?: { columns: { key: string; cn: string }[]; rows: Record<string, unknown>[] };
-  // 瀑布（杜邦分解等）
-  waterfall?: { categories: string[]; values: number[]; label?: string };
+  // 瀑布（增长来源拆解等）
+  waterfall?: WaterfallItem;
+  // 热力（季节占比矩阵、共同比逐年结构）
+  heatmap?: HeatmapData;
   // 额外 ECharts option 覆盖
   option?: Record<string, unknown>;
 }

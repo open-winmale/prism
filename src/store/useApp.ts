@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { AnalysisContext, ComputedDataset, IndustryKey, ReportDataset, VerifyIssue } from '@/engine';
 import { computeDataset, singleQuarterView } from '@/engine';
 import { createProvider, clearAllCaches, type DataProvider, type DataSourceKind, type SymbolBrief } from '@/data/provider';
+import { getSample } from '@/data/loader';
 import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
 import { clearCredentials, loadCredentials, saveCredentials } from '@/data/wm/credentials';
 import { clearTokenCache } from '@/data/wm/auth';
@@ -54,7 +55,8 @@ export const useAppStore = defineStore('app', () => {
 
   /**
    * 分析口径数据集：季度模式下流量表统一换成单季视图（DIFFQ_YTD），
-   * 概览/质量/风险的引擎模块都消费它；三表工作台展示原始披露值（见 FinancialsWorkspace）。
+   * 概览/质量/风险的引擎模块与三表工作台展示都消费它（FinancialsWorkspace 直接用，
+   * 不得再过一遍 singleQuarterView——那会二次差分，见其注释）。
    * 年度模式下与 dataset 相同。
    */
   const analysisDataset = computed<ReportDataset | null>(() => {
@@ -209,6 +211,54 @@ export const useAppStore = defineStore('app', () => {
     void selectStock(currentSymbol.value, dataMode.value, years);
   }
 
+  // ── 三表逐行横截面（/compare 渐进加载） ──
+  // 默认 0 家 = 0 EC。每多勾一家就要多取一份完整三表，EC 必须可预估、可确认、可看见。
+  const compareTargets = ref<Record<string, ReportDataset>>({});
+  const compareEc = ref(0);
+  const compareLoading = ref<string | null>(null);
+  const compareError = ref('');
+
+  /** 年度口径单家取数成本（张数 × 单价的实测值）：5 年 15 张 ≈ 3 万，10 年 30 张 ≈ 6 万 */
+  function ecPerCompany(): number {
+    return fetchYears.value >= 10 ? 60_000 : 30_000;
+  }
+
+  /**
+   * 预估勾选这些公司的 EC 成本。
+   * 内置样本（快照）走本地，恒为 0；只有需要调接口的标的才计价。
+   */
+  function estimateCompareEc(symbols: string[]): number {
+    if (dataSource.value !== 'live') return 0;
+    // 内置样本即使处于实时模式也走本地快照（0 EC），不能按接口价预估——
+    // 否则会出现「勾一下五粮液就报 3 万 EC」这种把免费路径算成收费的误导。
+    return symbols.filter((s) => !compareTargets.value[s] && !getSample(s)).length * ecPerCompany();
+  }
+
+  async function loadCompare(symbol: string) {
+    if (compareTargets.value[symbol]) return;
+    compareLoading.value = symbol;
+    compareError.value = '';
+    try {
+      const res = await providerInstance.getDataset(symbol, {
+        mode: 'annual',
+        years: fetchYears.value,
+      });
+      compareTargets.value = { ...compareTargets.value, [symbol]: res.dataset };
+      compareEc.value += res.ecCost ?? 0;
+    } catch (e) {
+      compareError.value = `${symbol}：${e instanceof Error ? e.message : String(e)}`;
+      // 失败的标的从选中里剔除由调用方负责；这里不静默重试（EC 已经花了就别再花一次）
+    } finally {
+      compareLoading.value = null;
+    }
+  }
+
+  function clearCompare() {
+    compareTargets.value = {};
+    compareEc.value = 0;
+    compareError.value = '';
+  }
+
   // ── 动态选标的 ──
   const searchResults = ref<SymbolBrief[]>([]);
   const searching = ref(false);
@@ -273,5 +323,13 @@ export const useAppStore = defineStore('app', () => {
     fetchYears,
     switchMode,
     switchYears,
+    compareTargets,
+    compareEc,
+    compareLoading,
+    compareError,
+    ecPerCompany,
+    estimateCompareEc,
+    loadCompare,
+    clearCompare,
   };
 });

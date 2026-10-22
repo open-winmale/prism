@@ -10,6 +10,7 @@ export type Drv =
   | { d: 'margin'; a: string; b: string }
   | { d: 'share'; a: string; b: string }
   | { d: 'sum'; as: string[] }
+  | { d: 'sum_all'; as: string[] }
   | { d: 'sum_share'; b: string; as: string[] };
 
 // get: 按字段名取数（来自某期三大报表）
@@ -38,6 +39,11 @@ export function evalDrv(drv: Drv, get: (k: string) => Num): Num {
     case 'sum': {
       const vals: Num[] = drv.as.map((k) => get(k));
       return safeSum(vals);
+    }
+    // 严格求和：任一项缺失 → null（用于「现金净增加额」这类恒等式，缺一项就不该出数）
+    case 'sum_all': {
+      const vals: Num[] = drv.as.map((k) => get(k));
+      return vals.some((v) => v == null) ? null : vals.reduce<number>((a, b) => a + (b ?? 0), 0);
     }
     case 'sum_share': {
       const b = get(drv.b);
@@ -159,11 +165,17 @@ export const STMT_TREE: Record<'balance' | 'income' | 'cashflow', StmtRow[]> = {
   ],
   cashflow: [
     { k: 'SSIR', cn: '销售商品提供劳务收到的现金', col: 'cash_from_sales' },
+    { k: 'TAXPD', cn: '　支付的各项税费', col: 'taxes_paid' },
     { k: 'NCFO', cn: '经营活动现金流量净额', col: 'net_cash_operating', section: true },
     { k: 'CLAR', cn: '购建长期资产支付的现金', col: 'capex_cash' },
     { k: 'NCFI', cn: '投资活动现金流量净额', col: 'net_cash_investing', section: true },
     { k: 'NCFF', cn: '筹资活动现金流量净额', col: 'net_cash_financing', section: true },
-    { k: 'NCF', cn: '现金净增加额', col: 'net_cash_operating' },
+    // 现金净增加额 = 经营 + 投资 + 筹资；任一项缺失则 null（此前误取 net_cash_operating，与 NCFO 行完全重复）
+    {
+      k: 'NCF',
+      cn: '现金净增加额',
+      drv: { d: 'sum_all', as: ['net_cash_operating', 'net_cash_investing', 'net_cash_financing'] },
+    },
     { k: 'CCF', cn: '期末现金及等价物', col: 'cash_end', section: true },
   ],
 };

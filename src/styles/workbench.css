@@ -770,6 +770,29 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 横滚指示：表格超宽时右缘渐隐提示「右边还有」，滚到底自动消失（TableScroll 组件驱动） */
+.wb-scroll {
+  position: relative;
+}
+
+.wb-scroll::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 22px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(to right, rgb(255 255 255 / 0), rgb(var(--wb-surface)));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.wb-scroll.is-scrollable:not(.is-at-end)::after {
+  opacity: 1;
+}
+
 .wb-table {
   width: 100%;
   border-collapse: separate;
@@ -1150,6 +1173,350 @@ body {
   color: rgb(var(--wb-brand));
 }
 
+/* ── 条件高亮：幅度着色遵循 A 股「涨红跌绿」，只表达方向，不表达好坏 ──
+   好坏判读另走 .is-bad / .is-good（红=需警惕，绿=偏正面），两套语义不混用。 */
+
+.wb-table td.is-up {
+  background: rgb(var(--wb-danger) / 0.08);
+  color: rgb(var(--wb-danger));
+  font-weight: 600;
+}
+
+.wb-table td.is-down {
+  background: rgb(var(--wb-safe) / 0.08);
+  color: rgb(var(--wb-safe));
+  font-weight: 600;
+}
+
+.wb-table td.is-bad {
+  background: rgb(var(--wb-danger) / 0.08);
+  color: rgb(var(--wb-danger));
+}
+
+.wb-table td.is-good {
+  background: rgb(var(--wb-safe) / 0.08);
+  color: rgb(var(--wb-safe));
+}
+
+/* 行首异动标记：让「这一行有跳变」在竖扫时先被看见 */
+.wb-flag-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: rgb(var(--wb-watch));
+  vertical-align: middle;
+}
+
+.wb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wb-legend__item--muted {
+  color: rgb(var(--wb-muted));
+}
+
+.wb-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgb(var(--wb-line-strong));
+}
+
+.wb-swatch.is-up {
+  background: rgb(var(--wb-danger) / 0.5);
+}
+
+.wb-swatch.is-down {
+  background: rgb(var(--wb-safe) / 0.5);
+}
+
+/* 条件条：一组 segmented 控制 + 一句口径说明，横向排布，窄屏自动换行 */
+.wb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgb(var(--wb-line));
+  border-radius: 8px;
+  background: rgb(var(--wb-surface-soft));
+}
+
+.wb-filters__label {
+  font-size: 11px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-filters__note {
+  flex: 1 1 100%;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(var(--wb-slate));
+}
+
+/* 条件条收纳（FilterCollapse）：桌面恒展开、面板承接原 flex 布局；≤767px 折叠成摘要行 */
+.wb-filters--collapse {
+  display: block;
+}
+
+.wb-filters--collapse .wb-filters__panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.wb-filters__toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .wb-filters--collapse .wb-filters__toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .wb-filters--collapse .wb-filters__summary {
+    color: rgb(var(--wb-muted));
+    text-align: left;
+  }
+
+  .wb-filters--collapse .wb-filters__chev {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid rgb(var(--wb-muted));
+    border-bottom: 1.5px solid rgb(var(--wb-muted));
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+  }
+
+  .wb-filters--collapse.is-open .wb-filters__chev {
+    transform: rotate(225deg);
+  }
+
+  .wb-filters--collapse .wb-filters__panel {
+    display: none;
+  }
+
+  .wb-filters--collapse.is-open .wb-filters__panel {
+    display: flex;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgb(var(--wb-line));
+  }
+}
+
+/* 开关：只显示跳变科目 */
+.wb-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 6px;
+  background: rgb(var(--wb-surface));
+  font-size: 12px;
+  color: rgb(var(--wb-slate));
+  cursor: pointer;
+}
+
+.wb-toggle:hover {
+  border-color: rgb(var(--wb-brand));
+}
+
+.wb-toggle.is-on {
+  border-color: rgb(var(--wb-brand));
+  background: rgb(var(--wb-brand-soft));
+  color: rgb(var(--wb-brand));
+  font-weight: 600;
+}
+
+.wb-toggle__box {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 2px;
+}
+
+.wb-toggle.is-on .wb-toggle__box {
+  border-color: rgb(var(--wb-brand));
+  background: rgb(var(--wb-brand));
+}
+
+/* 异动信号卡：概览区 Top 异动，点进财报下钻 */
+.wb-anomaly {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wb-anomaly__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgb(var(--wb-line));
+  border-left: 3px solid rgb(var(--wb-line-strong));
+  border-radius: 6px;
+  background: rgb(var(--wb-surface));
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-anomaly__item:hover {
+  border-color: rgb(var(--wb-brand));
+}
+
+.wb-anomaly__item.is-high {
+  border-left-color: rgb(var(--wb-danger));
+}
+
+.wb-anomaly__item.is-bad {
+  border-left-color: rgb(var(--wb-danger));
+}
+
+.wb-anomaly__item.is-good {
+  border-left-color: rgb(var(--wb-safe));
+}
+
+.wb-anomaly__period {
+  font-family: var(--wb-font-mono);
+  font-size: 11px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-anomaly__item strong {
+  font-weight: 600;
+}
+
+.wb-anomaly__evidence {
+  flex: 1 1 100%;
+  font-family: var(--wb-font-mono);
+  font-size: 11px;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-anomaly__why {
+  flex: 1 1 100%;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(var(--wb-slate));
+}
+
+/* 科目解读：下钻的落点——定义 / 公式 / 状态 / 判读，四段竖排，窄屏自动堆叠 */
+.wb-doc__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wb-doc__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgb(var(--wb-line));
+}
+
+.wb-doc__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.wb-doc__row dt {
+  flex: 0 0 72px;
+  font-size: 11px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-doc__row dd {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgb(var(--wb-ink));
+}
+
+.wb-doc__formula {
+  font-family: var(--wb-font-mono);
+  font-size: 12px;
+  color: rgb(var(--wb-brand));
+}
+
+/* ── 三表逐行横截面（/compare） ──────────────────────────────── */
+/* 本公司列加底色：横扫一行时视线要有锚点 */
+.wb-table--peer tbody td.is-mine {
+  background: rgb(var(--wb-surface-soft));
+  font-weight: 600;
+}
+
+.wb-table--peer tbody tr.is-outlier td {
+  background: rgb(var(--wb-watch) / 0.06);
+}
+
+.wb-table--peer tbody tr.is-outlier td.is-mine {
+  background: rgb(var(--wb-watch) / 0.12);
+}
+
+/* 单元格副行（共同比）：信息密度靠它，但视觉上必须退到次要层级 */
+.wb-table--peer .wb-td-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-table--peer .wb-th-sub.is-mine {
+  color: rgb(var(--wb-brand));
+}
+
+/* 排名徽标：第一名/末名单独着色，中间色弱化处理 */
+.wb-rank {
+  display: inline-block;
+  min-width: 34px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  background: rgb(var(--wb-surface-soft));
+  color: rgb(var(--wb-slate));
+}
+.wb-rank.is-top {
+  background: rgb(var(--wb-brand) / 0.12);
+  color: rgb(var(--wb-brand));
+}
+.wb-rank.is-bottom {
+  background: rgb(var(--wb-watch) / 0.14);
+  color: rgb(var(--wb-watch));
+}
+.wb-rank.is-mid {
+  background: rgb(var(--wb-surface-soft));
+}
+
 @media (max-width: 900px) {
   .wb-home__questions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1286,8 +1653,9 @@ body {
   .wb-verdict__thesis {
     font-size: 14px;
   }
+  /* 窄屏密度：收紧内边距，一屏尽量多露出一个完整的期间子列对 */
   .wb-table th,
   .wb-table td {
-    padding: 6px 8px;
+    padding: 5px 6px;
   }
 }

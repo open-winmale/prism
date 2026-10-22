@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { computeDataset, fieldGetter, STMT_TREE, type AnalysisContext } from '@/engine';
-import { lineItemValues, sameQuarterYoyOf, shareOf, yoyOf } from '@/engine/methods/columns';
+import {
+  flagOf,
+  lineItemValues,
+  sameQuarterYoyOf,
+  shareDenominator,
+  shareOf,
+  yoyOf,
+} from '@/engine/methods/columns';
 import { dataset } from '@/data/samples/liquor/600519';
 
 const ctx: AnalysisContext = { dataset, computed: computeDataset(dataset), industry: 'liquor' };
@@ -18,6 +25,13 @@ describe('列组计算 columns', () => {
 
   it('yoyOf：上期为 0 → null（不产生 Infinity）', () => {
     expect(yoyOf([0, 50])[1]).toBeNull();
+  });
+
+  // 回归：现金净增加额由 −20 亿变 +196 亿，旧口径算出 −1070%，这个数字没有解释力
+  it('yoyOf：上期为负 → null（跨越正负的同比不成立）', () => {
+    expect(yoyOf([-20, 196])[1]).toBeNull();
+    expect(yoyOf([-20, -30])[1]).toBeNull();
+    expect(yoyOf([20, 30])[1]).toBeCloseTo(0.5, 10);
   });
 
   it('shareOf：分母缺失或为 0 → null', () => {
@@ -55,6 +69,57 @@ describe('列组计算 columns', () => {
   it('缺失字段的 col 行传播 null（600519 无存货明细）', () => {
     const values = lineItemValues(reports, { cn: '库存商品', col: 'inventory_finished' });
     expect(values.every((v) => v === null)).toBe(true);
+  });
+});
+
+describe('共同比分母 shareDenominator', () => {
+  it('资产负债表 ÷ 总资产，利润表 ÷ 营业总收入', () => {
+    const r = reports[reports.length - 1];
+    expect(shareDenominator('balance', r)).toBe(r.balance.total_assets ?? null);
+    expect(shareDenominator('income', r)).toBe(r.income.total_revenue ?? null);
+  });
+
+  it('现金流量表：流量项 ÷ 营业总收入，不再拿经营净额当整表分母', () => {
+    const r = reports[reports.length - 1];
+    expect(shareDenominator('cashflow', r, 'NCFO')).toBe(r.income.total_revenue ?? null);
+    expect(shareDenominator('cashflow', r, 'CLAR')).toBe(r.income.total_revenue ?? null);
+    expect(shareDenominator('cashflow', r, 'NCFF')).toBe(r.income.total_revenue ?? null);
+  });
+
+  it('现金流量表：期末现金是时点值 → ÷ 总资产', () => {
+    const r = reports[reports.length - 1];
+    expect(shareDenominator('cashflow', r, 'CCF')).toBe(r.balance.total_assets ?? null);
+  });
+
+  // 回归：制造样本 2024 年 CFO 为负，旧口径下资本开支占比会算出 −750%
+  it('经营现金流为负时，共同比不再产生负数（旧口径回归测试）', () => {
+    const r = {
+      period: '2024-12-31',
+      sampling: 'Q4' as const,
+      balance: { total_assets: 300_0000_0000 },
+      income: { total_revenue: 120_0000_0000 },
+      cashflow: { net_cash_operating: -6_0000_0000, capex_cash: 45_0000_0000 },
+    };
+    const den = shareDenominator('cashflow', r, 'CLAR');
+    expect(den).toBe(120_0000_0000);
+    expect((45_0000_0000 / den!) * 100).toBeCloseTo(37.5, 6);
+    // 旧口径（拿 CFO 当分母）会得到 −750%，这里显式钉死它不再出现
+    expect(45_0000_0000 / (r.cashflow.net_cash_operating ?? 1) * 100).toBeCloseTo(-750, 6);
+  });
+});
+
+describe('异动标记 flagOf', () => {
+  it('幅度越过阈值才标记，方向分上下', () => {
+    expect(flagOf([0.2, 0.35, -0.4, null], 0.3)).toEqual([null, 'up', 'down', null]);
+  });
+
+  it('缺期恒 null，绝不按 0 当作「没变」', () => {
+    expect(flagOf([null, null], 0.3)).toEqual([null, null]);
+  });
+
+  it('阈值边界：等于阈值即标记', () => {
+    expect(flagOf([0.3], 0.3)).toEqual(['up']);
+    expect(flagOf([0.29], 0.3)).toEqual([null]);
   });
 });
 

@@ -18,6 +18,9 @@ import { cashConversionCycleModule } from './analysis/cashConversionCycle';
 import { profitDriversModule } from './analysis/profitDrivers';
 import { qualityModelsModule } from './analysis/qualityModels';
 import { seasonalityModule } from './analysis/seasonality';
+import { anomalyScanModule } from './analysis/anomalyScan';
+import { growthSourcesModule } from './analysis/growthSources';
+import { beneishModule } from './analysis/beneish';
 
 export const MODULES: AnalysisModule[] = [
   mineDetectModule,
@@ -27,6 +30,9 @@ export const MODULES: AnalysisModule[] = [
   profitDriversModule,
   qualityModelsModule,
   seasonalityModule,
+  anomalyScanModule,
+  growthSourcesModule,
+  beneishModule,
   roeModule,
   grossMarginModule,
   netProfitModule,

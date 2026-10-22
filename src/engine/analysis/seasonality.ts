@@ -94,24 +94,26 @@ export function runSeasonality(ctx: AnalysisContext): AnalysisResult {
   }
   const fullYears = [...byYear.entries()].filter(([, ps]) => new Set(ps.map((x) => x.q)).size === 4);
 
-  // 单季营收占比矩阵（Q1-Q4 各年）——看「春节效应」是否稳定
+  // 季节占比矩阵（年 × 季）——用热力图而不是分组柱：
+  // 柱子要横向比较四组才看得出位移，热力图一眼就能看到哪一格偏离了常态。
   const seasonShare: ChartSpec | null =
     fullYears.length >= 2
       ? {
-          type: 'groupedBar',
+          type: 'heatmap',
           title: '各年单季营收占比（%）——季节分布是否稳定',
-          unit: '%',
-          categories: ['Q1', 'Q2', 'Q3', 'Q4'],
-          series: fullYears.map(([year, ps]) => {
-            const total = ps.reduce((s, x) => s + (x.rev ?? 0), 0);
-            return {
-              name: `${year}年`,
-              data: ([1, 2, 3, 4] as const).map((q) => {
+          heatmap: {
+            rows: fullYears.map(([year]) => `${year}年`),
+            cols: ['Q1', 'Q2', 'Q3', 'Q4'],
+            values: fullYears.flatMap(([, ps]) => {
+              const total = ps.reduce((s, x) => s + (x.rev ?? 0), 0);
+              return ([1, 2, 3, 4] as const).map((q) => {
                 const p = ps.find((x) => x.q === q);
-                return p?.rev != null && total > 0 ? Number(((p.rev / total) * 100).toFixed(1)) : null;
-              }),
-            };
-          }),
+                return p?.rev != null && total > 0 ? p.rev / total : null;
+              });
+            }),
+            visualMin: 0,
+            visualMax: 0.45,
+          },
         }
       : null;
 
@@ -185,7 +187,16 @@ export function runSeasonality(ctx: AnalysisContext): AnalysisResult {
     ],
   });
 
-  if (seasonShare) blocks.push({ id: 'season_share', title: '季节分布（Q1 春节效应是否稳定）', summary: '每根柱是一年：Q1 占比高是白酒春节备货的常态；占比结构突然变化（某季占比偏离历史区间 5pct 以上）= 渠道或需求行为变化的前兆，值得追查。', charts: [seasonShare] });
+  if (seasonShare)
+    blocks.push({
+      id: 'season_share',
+      title: '季节分布（Q1 春节效应是否稳定）',
+      summary:
+        '每一行是一年、每一列是一个季度，颜色越深该季占全年营收的比重越高。' +
+        'Q1 占比高是白酒春节备货的常态；同一列颜色逐年变化，才说明季节结构在漂移。' +
+        '某季占比偏离历史区间 5 个百分点以上 = 渠道或需求行为变化的前兆，值得追查。',
+      charts: [seasonShare],
+    });
 
   return {
     moduleId: 'seasonality',

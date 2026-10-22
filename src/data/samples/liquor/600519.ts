@@ -9,7 +9,10 @@ export const dataset: ReportDataset = {
   "meta": {
     "fragrance": "酱香",
     "priceBand": "超高端",
-    "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2025；单位：元"
+    "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2025；单位：元",
+    // 茅台股份合并集团财务公司：现金流量表期末现金含存放央行/同业款项（如 2021 末 1786 亿 = 货币资金 518 亿 + 拆出），
+    // 与货币资金天然大幅偏离属口径事实而非数据异常（实时链路由 detectCashScope 自动识别，快照在此手工标注）
+    "cashScope": "finance-subsidiary"
   },
   "periods": [
     "2021-12-31",

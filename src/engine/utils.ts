@@ -40,9 +40,14 @@ export function asPercent(v: Num): Num {
   return v == null ? null : v * 100;
 }
 
-// 同比（本年 / 上年 - 1）
+/**
+ * 同比（本年 / 上年 − 1）。
+ * 基期为 0 或为负 → null：同比只有在基期为正、且两期同号时才有意义。
+ * 例如现金净增加额由 −20 亿变 +196 亿，算出来是 −1070%，这个数字没有任何解释力，
+ * 只会让人误以为暴跌。宁可显示「—」并让人去看绝对额。
+ */
 export function yoy(curr: Num, prev: Num): Num {
-  if (curr == null || prev == null || prev === 0) return null;
+  if (curr == null || prev == null || prev <= 0) return null;
   return curr / prev - 1;
 }
 

@@ -160,3 +160,41 @@ describe('singleQuarterView（季度口径统一视图）', () => {
     expect(view.map((r) => r.period)).toEqual(TWO_YEARS.map((r) => r.period));
   });
 });
+
+describe('二次差分事故回归（2026-10-22 泸州老窖实时数据实测）', () => {
+  // 实时季度窗口 8 期（2024Q3–2026Q2），源数据为累计披露值（亿元）。
+  // 事故：store.analysisDataset 已做过单季视图，FinancialsWorkspace 又过一遍 singleQuarterView，
+  // 页面显示 2025Q2 = −22.5 亿（负营收）。单季视图只允许差分一次。
+  const LZLJ: PeriodReport[] = [
+    pr('2024-09-30', 'Q3', 243.0, 116.1),
+    pr('2024-12-31', 'Q4', 312.0, 134.7),
+    pr('2025-03-31', 'Q1', 93.5, 45.9),
+    pr('2025-06-30', 'Q2', 164.5, 76.6),
+    pr('2025-09-30', 'Q3', 231.3, 107.6),
+    pr('2025-12-31', 'Q4', 257.3, 108.3),
+    pr('2026-03-31', 'Q1', 80.3, 37.1),
+    pr('2026-06-30', 'Q2', 104.7, 43.4),
+  ];
+
+  it('单次差分：各期单季营收为正（2025Q2 = 164.5 − 93.5 = 71.0）', () => {
+    const view = singleQuarterView(LZLJ);
+    expect(view[3].income.total_revenue).toBeCloseTo(71.0, 1);
+    expect(view[4].income.total_revenue).toBeCloseTo(66.8, 1); // 2025Q3
+    expect(view[5].income.total_revenue).toBeCloseTo(26.0, 1); // 2025Q4
+    expect(view[7].income.total_revenue).toBeCloseTo(24.4, 1); // 2026Q2
+    // 窗口首期 2024Q3 缺 2024Q2 累计 → null（不按 0 补）；2024Q4 可推导（年报 − 三季报）
+    expect(view[0].income.total_revenue).toBeNull();
+    expect(view[1].income.total_revenue).toBeCloseTo(69.0, 1);
+  });
+
+  it('对单季视图再差分一次会产出负营收——消费方禁止二次 singleQuarterView', () => {
+    const once = singleQuarterView(LZLJ);
+    const twice = singleQuarterView(once);
+    // 曾经的错误显示：2025Q2 −22.5、2025Q4 −40.7（= 单季 − 上季单季，纯垃圾）
+    expect(twice[3].income.total_revenue).toBeCloseTo(once[3].income.total_revenue! - once[2].income.total_revenue!, 5);
+    expect(twice[3].income.total_revenue!).toBeLessThan(0);
+    expect(twice[5].income.total_revenue!).toBeLessThan(0);
+    // 且连锁置空：2024Q4 因首期已 null 而跟着推不出
+    expect(twice[1].income.total_revenue).toBeNull();
+  });
+});

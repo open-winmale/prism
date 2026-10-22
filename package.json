@@ -1,6 +1,6 @@
 {
   "name": "report-lens",
-  "version": "0.5.0",
+  "version": "1.1.0",
   "private": false,
   "description": "财报透视 · 赢麻了开源免费版：用财报解决一个投资问题（排雷/ROE/毛利率/资产/存货/产销量），基于老唐读财报方法论与赢麻了专业版分析资产。",
   "type": "module",

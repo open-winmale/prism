@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
-import { mineChecks, mineVerdict, runProfitDrivers, type AnalysisContext } from '@/engine';
+import { RouterLink, useRouter } from 'vue-router';
+import {
+  anomalySignals,
+  mineChecks,
+  mineVerdict,
+  runProfitDrivers,
+  type AnalysisContext,
+  type AnomalySignal,
+} from '@/engine';
 import { trendLine } from '@/engine/methods/trend';
 import type { ChartSpec } from '@/engine';
 import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
@@ -18,6 +25,7 @@ const props = defineProps<{
 }>();
 
 const store = useAppStore();
+const router = useRouter();
 
 const checks = computed(() => mineChecks(props.ctx));
 const verdict = computed(() => mineVerdict(checks.value));
@@ -37,6 +45,14 @@ const reports = computed(() => props.ctx.dataset.reports);
 const labels = computed(() => reports.value.map((r) => r.period.slice(0, 4)));
 
 const revenue = computed(() => reports.value.map((r) => r.income.total_revenue ?? null));
+/** 逐期营收同比：与营收绝对值组成双轴组合图（规模柱 + 增速线） */
+const revenueYoy = computed(() => {
+  const vals = revenue.value;
+  return vals.map((v, i) => {
+    const prev = vals[i - 1];
+    return i === 0 || v == null || prev == null || prev === 0 ? null : v / prev - 1;
+  });
+});
 const revenueGrowth = computed(() => {
   const a = last(revenue.value);
   const b = prevItem(revenue.value);
@@ -103,12 +119,29 @@ const smallMultiples = computed<{ spec: ChartSpec; source: string }[]>(() => {
   const gmMean = gmValid.length ? gmValid.reduce((sum, v) => sum + v, 0) / gmValid.length : null;
   return [
     {
-      spec: trendLine(
-        labels.value,
-        [{ name: '营业总收入', values: revenue.value.map((v) => (v == null ? null : v / 1e8)) }],
-        { title: '营业总收入', unit: '亿元' },
-      ),
-      source: '利润表',
+      // 柱 + 线双轴：左边看规模，右边看增速，一屏里同时回答「多少」和「多快」
+      spec: {
+        type: 'bar',
+        title: '营业总收入与同比',
+        unit: '亿元',
+        categories: labels.value,
+        series: [
+          {
+            name: '营业总收入',
+            as: 'bar',
+            data: revenue.value.map((v) => (v == null ? null : +(v / 1e8).toFixed(1))),
+          },
+          {
+            name: '同比',
+            as: 'line',
+            axis: 'right',
+            data: revenueYoy.value.map((v) => (v == null ? null : +(v * 100).toFixed(1))),
+          },
+        ],
+        yLabelRight: '%',
+        refLines: [{ value: 0, label: '0%' }],
+      },
+      source: '利润表 · 派生',
     },
     {
       spec: trendLine(
@@ -140,6 +173,24 @@ const smallMultiples = computed<{ spec: ChartSpec; source: string }[]>(() => {
     },
   ];
 });
+
+/**
+ * 异动信号：概览页最该先看见的东西——三表里跳变幅度最大的几个科目。
+ * 与排雷清单的区别：排雷是「规则是否被触发」，异动是「哪里变了」，
+ * 后者能抓到规则还没触发、但已经明显位移的科目（存货涨 80% 未必触发排雷，但必须知道）。
+ */
+const anomalies = computed(() =>
+  anomalySignals(props.ctx, { quarterly: store.dataMode === 'quarterly', limit: 6 }),
+);
+
+/** 下钻：带着「哪张表的哪个科目」跳到财报工作台，直接打开该科目的解读弹窗 */
+function openAnomaly(signal: AnomalySignal) {
+  void router.push({
+    name: 'company',
+    params: { symbol: props.ctx.dataset.symbol, workspace: 'financials' },
+    query: { kind: signal.kind, item: signal.itemKey },
+  });
+}
 
 const peerRows = computed(() => {
   const items = [...(props.peers?.items ?? [])].sort((a, b) => (b.mv ?? 0) - (a.mv ?? 0));
@@ -231,6 +282,45 @@ function pct(value: number | null | undefined, digits = 1): string {
       >
         <ChartFrame :spec="item.spec" :source="item.source" :height="150" :downloadable="false" />
       </RouterLink>
+    </div>
+  </section>
+
+  <section class="wb-section">
+    <div class="wb-section__head">
+      <div>
+        <h2 class="wb-section__title">异动信号</h2>
+        <div class="wb-section__sub">
+          三表中跳变最大的科目（同比 ±30%、结构 ±5 个百分点）；点任意一条直接下钻到该科目
+        </div>
+      </div>
+      <RouterLink :to="`/company/${ctx.dataset.symbol}/financials`" class="wb-btn">看三表 →</RouterLink>
+    </div>
+    <div class="wb-section__body">
+      <div v-if="anomalies.length" class="wb-anomaly">
+        <div
+          v-for="signal in anomalies"
+          :key="signal.id"
+          class="wb-anomaly__item"
+          :class="{ 'is-high': signal.severity === 'high', 'is-bad': signal.tone === 'bad', 'is-good': signal.tone === 'good' }"
+          role="button"
+          tabindex="0"
+          :title="`下钻查看 ${signal.itemName} 的趋势与解读`"
+          @click="openAnomaly(signal)"
+          @keydown.enter="openAnomaly(signal)"
+        >
+          <span class="wb-anomaly__period">{{ signal.period }}</span>
+          <strong>{{ signal.itemName }}</strong>
+          <span class="wb-note">
+            {{ signal.type === 'yoy' ? '同比' : '结构' }} ·
+            {{ signal.tone === 'bad' ? '需警惕' : signal.tone === 'good' ? '偏正面' : '需结合上下文' }}
+          </span>
+          <span class="wb-anomaly__evidence">{{ signal.evidence }}</span>
+          <span class="wb-anomaly__why">{{ signal.why }}</span>
+        </div>
+      </div>
+      <p v-else class="wb-callout">
+        默认阈值下三表没有显著跳变。这不代表没有问题，只代表没有突然变化——调低阈值可在财报工作台看到更细微的位移。
+      </p>
     </div>
   </section>
 

@@ -10,6 +10,12 @@ describe('真实白酒数据准入门禁', () => {
       if (errs.length) console.log(formatIssues(issues));
       expect(errs).toEqual([]);
     });
+    it(`${ds.name}: 0 噪声告警（真实数据不得触发「请核对」类提示甩给用户）`, () => {
+      const issues = verifyDataset(ds);
+      const warns = issues.filter((i) => i.level === 'warn');
+      if (warns.length) console.log(formatIssues(issues));
+      expect(warns).toEqual([]);
+    });
     it(`${ds.name}: 合同负债全期有值`, () => {
       for (const r of ds.reports) {
         expect(r.balance.contract_liabilities).not.toBeNull();

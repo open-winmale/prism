@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { mineChecks, type AnalysisContext } from '@/engine';
+import { mineChecks, runBeneish, type AnalysisContext } from '@/engine';
 import RiskRow from '@/components/ui/RiskRow.vue';
+import InsightList from '@/components/ui/InsightList.vue';
 
 const props = defineProps<{ ctx: AnalysisContext }>();
+
+/** Beneish M-Score：与下面的单指标排雷互补——单指标看「哪个科目异常」，M-Score 看「整体是否像被修饰过」 */
+const beneish = computed(() => runBeneish(props.ctx));
 
 const checks = computed(() => mineChecks(props.ctx));
 const naCount = computed(() => checks.value.filter((c) => c.status === 'na').length);
@@ -32,6 +36,9 @@ const groups = computed(() => {
 </script>
 
 <template>
+  <!-- 综合侦测先行：先给一个八因子综合分，再逐项排雷 -->
+  <InsightList :result="beneish" />
+
   <section class="wb-section">
     <div class="wb-section__head">
       <div>

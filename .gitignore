@@ -14,3 +14,4 @@ e2e-screenshots/*
 !e2e-screenshots/ui-baseline
 .playwright-cli
 .workbuddy
+.zcode

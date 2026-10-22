@@ -69,6 +69,28 @@ describe('verifyDataset · 勾稽规则', () => {
     expect(issues.some((i) => i.level === 'warn' && i.field === 'monetary_funds')).toBe(true);
   });
 
+  it('规则4（已移除）：少数股东损益为负 → 净利 < 归母不再告警', () => {
+    // 泸州老窖 2021 实际形态：净利 79.37 亿 < 归母 79.56 亿 ⇔ 少数股东损益 −0.18 亿（正常勾稽结果）
+    const ds = {
+      ...base,
+      reports: base.reports.map((r, i) =>
+        i === 4 ? { ...r, income: { ...r.income, net_profit: (r.income.net_profit_parent as number) - 1.8e7 } } : r,
+      ),
+    };
+    const issues = verifyDataset(ds);
+    expect(issues.some((i) => i.field === 'net_profit' && i.msg.includes('归母'))).toBe(false);
+  });
+
+  it('规则6（收窄）：长期待摊费用等小字段量级正常 → 不告警', () => {
+    // 泸州老窖连续五年 71–176 万的长期待摊费用是真实源数据（元单位带分位小数），不是误填
+    const ds = {
+      ...base,
+      reports: base.reports.map((r, i) => (i === 0 ? { ...r, balance: { ...r.balance, long_term_deferred_expenses: 710010.92 } } : r)),
+    };
+    const issues = verifyDataset(ds);
+    expect(issues.some((i) => i.field === 'long_term_deferred_expenses')).toBe(false);
+  });
+
   it('规则5：白酒全期缺合同负债 → warn（不 error）', () => {
     const stripped: ReportDataset = {
       ...base,

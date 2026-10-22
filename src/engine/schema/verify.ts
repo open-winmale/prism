@@ -18,6 +18,22 @@ function looksLikeWrongMagnitude(v: number): boolean {
   return v > 0 && v < 1e6;
 }
 
+// 规则 6 只查「规模字段」：这些字段的真实现实量级（元）不可能低于百万，
+// 出现 0 < v < 1e6 的小值基本只有一种解释——把亿元数值当元录入。
+// 不做全字段扫描：长期待摊费用等小字段本来就可能只有几十万
+// （泸州老窖连续五年 71–176 万是真实源数据），全查会把真数据当噪声甩给用户。
+const SCALE_FIELDS: Partial<Record<string, string>> = {
+  total_revenue: '营业总收入',
+  operating_cost: '营业成本',
+  net_profit: '净利润',
+  net_profit_parent: '归母净利润',
+  total_assets: '资产总计',
+  total_liabilities: '负债合计',
+  total_equity: '所有者权益',
+  equity_parent: '归母所有者权益',
+  monetary_funds: '货币资金',
+};
+
 // 规则 7：销量 > 产量 + 期初库存（>1% 容差）为异常
 function checkProductionSales(ds: ReportDataset, out: VerifyIssue[]): void {
   const rows = ds.productionSales ?? [];
@@ -75,16 +91,18 @@ function checkPeriod(rep: PeriodReport, out: VerifyIssue[], cashScope?: 'standar
     }
   }
 
-  // 规则 4：净利润 ≥ 归母净利润
-  if (n(inc.net_profit) && n(inc.net_profit_parent) && (inc.net_profit as number) < (inc.net_profit_parent as number) - 1) {
-    out.push({ level: 'warn', field: 'net_profit', period: p, msg: `净利润(${inc.net_profit}) < 归母净利润(${inc.net_profit_parent})，请核对口径（少数股东损益为负时属正常）` });
-  }
+  // 规则 4（净利润 ≥ 归母净利润）已移除：勾稽恒等式 净利润 = 归母净利润 + 少数股东损益，
+  // 净利润 < 归母净利润 ⟺ 少数股东损益为负——子公司少数股东分担亏损的正常经营现象
+  // （泸州老窖 2021：净利 79.37 亿 < 归母 79.56 亿，少数股东损益 −0.18 亿，源数据无误）。
+  // 这两个字段自身无法区分「负少数股东损益」与「映射错误」，报警等于把恒等式结果甩给用户；
+  // 真正的映射错误由规则 2/3（勾稽）与规则 9（同比连续性）捕捉。
 
-  // 规则 6：金额量级疑似非「元」
+  // 规则 6：规模字段量级疑似非「元」（只查 SCALE_FIELDS，见其注释）
   const allFields: Record<string, Num> = { ...b, ...inc, ...cf };
-  for (const [k, v] of Object.entries(allFields)) {
+  for (const [k, label] of Object.entries(SCALE_FIELDS)) {
+    const v = allFields[k];
     if (typeof v === 'number' && looksLikeWrongMagnitude(v)) {
-      out.push({ level: 'warn', field: k, period: p, msg: `字段 ${k}=${v} 量级疑似非「元」（是否误填亿元？）` });
+      out.push({ level: 'warn', field: k, period: p, msg: `${label}=${v} 元量级过小，疑似把「亿元」数值当元录入` });
     }
   }
 
