@@ -1,4 +1,4 @@
-# prism（财报透视）交接提示词（v4 · 2026-10-22 · Phase 6 价值深度 + 表达力 + 375px 专项 + 更名 prism 之后）
+# prism（财报透视）交接提示词（v5 · 2026-10-22 · 全量已提交并 push prism，对齐真实 git 状态）
 
 > 用途：把本文件全文交给下一个 AI（Claude/Codex/其他），授权其在指定约束内继续开发本项目。
 > 项目根：`/Users/congwuzhang/work/src/end/sift`（**prism**，2026-10-22 前名 report-lens）
@@ -9,7 +9,7 @@
 
 ## ⚠️ 接手前必读的三条硬状态（2026-10-22 11:25 UTC+8 更新）
 
-1. **v1.1.0 已上线**（2026-10-22 推送，Pages 已部署新 bundle）。其后新一批改动 **8 个文件未 commit**：E2E 进 CI（ci.yml 新增 e2e job）+ playwright-core 转正 devDependency（含 package-lock）+ run.cjs 可移植解析 + 首页 chips 改 RouterLink + 基线图 + CHANGELOG/本文件。等用户确认后再 commit/push；**该批须推送后才能在 GitHub 上验证 e2e job 首跑**。
+1. **工作区干净，全部已提交并 push `origin/main`（prism）**：最新 `d440d7c`（更名 prism）已推送；此前 `c34a46a`(tag v1.1.0：Phase6 + 375px 专项 + 口径与校验修复) 与 `00d0518`(E2E 进 CI：ubuntu runner 跑 101 断言) 均已在 main 上推送。GitHub Pages 已部署新 bundle。除非有新改动，无需再 commit/push。
 2. **四门禁 2026-10-22 11:21 实测 4/4 全绿**（新 playwright-core 1.64.1 解析路径下 E2E 101/101 亦过）。
 3. **门禁真实数字（2026-10-22 实测）**：单测 **232 passed / 5 skipped**；`npm run typecheck` 0 错；`npm run lint` 0 warning/0 error；E2E **101 断言全绿**；build 通过。
 
@@ -21,11 +21,11 @@
 
 **赢麻了（winmale.com）** 是面向个人投资者的投研平台。专业版前端在 `../web/winmale-v2`（React，内网 JWT，`src/features/analysis`）。后端方法论在 `../script`（XScript，约 237 个 .xs 资产：三表口径 `sys/rptdom/stmt_tree.xs`、指标库 `sys/metric/cn/from_db.json` 1274 项、行业分位 PERCENTILE、单季 DIFFQ_YTD 等）。
 
-**report-lens（本项目，sift）** 是「个人投资者的专业版简化版」：保留专业版的「期间 × 科目 × 对比 × 下钻」证据链，去掉机构级复杂度。范围 = A 股非金融企业的三表诊断（白酒是第一个行业镜头）；不做附注/F10/盈利预测/ROI/提醒（专业版数据域，报告内放情境化 CTA 引流，所有 CTA 带 `utm_source=report-lens`）。
+**prism（本项目，磁盘目录仍叫 sift）** 是「个人投资者的专业版简化版」：保留专业版的「期间 × 科目 × 对比 × 下钻」证据链，去掉机构级复杂度。范围 = A 股非金融企业的三表诊断（白酒是第一个行业镜头）；不做附注/F10/盈利预测/ROI/提醒（专业版数据域，报告内放情境化 CTA 引流，所有 CTA 带 `utm_source=prism`）。
 
 产品承诺（不可妥协）：**结论先行、证据可查、口径诚实**——5 秒结论 / 30 秒证据 / 3 分钟下钻，且每个答案都能指出是哪个数字支撑的。
 
-### 1.2 当前状态（v1.0 → v1.1 价值深度 + 表达力，本地未 commit）
+### 1.2 当前状态（v1.0 → v1.1.0：价值深度 + 表达力 + 375px 专项 + E2E 进 CI，已提交并 push prism）
 
 **已落地（全部有单测/E2E 背书，见 §2.2 文件地图）**：
 
@@ -52,7 +52,7 @@
 - **季度模式首期无数据属设计而非缺陷（2026-10-22 用户问询澄清）**：季度窗口取最近 8 个报告期，首期（如 2024Q3）的单季值需上一期累计（半年报）差分，窗口外推不出 → 利润表/现金流量表显示「—」（铁律：不拿累计冒充单季）；资产负债表是时点值不受影响。可选改进未做：多取 1 期垫脚（+3 张表 ≈ +6000 EC）。
 - **E2E 禁点「季度」按钮**：dev 环境 `.env.local` 带凭证时切季度会真实触发实时取数（8 期 × 3 表）花 EC——季度口径正确性由 quarter.test.ts 单测守，E2E 只走快照路径。
 
-**未做（等用户决策，见第三部分）**：commit/push、E2E 进 CI、申万 L3 全成分 peer 对比（需 AppId 配额）、产销量/附注模块（缺年报原文域，未挂载）。
+**未做（等用户决策，见第三部分）**：申万 L3 全成分 peer 对比（需 AppId 配额）、产销量/附注模块（缺年报原文域，未挂载）。
 
 ---
 
@@ -65,8 +65,8 @@ Vue3 + Vite5 + TS(strict) + UnoCSS + ECharts(core 按需) + pinia + vitest + oxl
 ```bash
 npm run typecheck && npm run lint && npm test -- --run && npm run build   # 四门禁，每批次必跑
 npm run dev    # 5173
-E2E_BASE=http://127.0.0.1:5173/report-lens NO_PROXY=127.0.0.1,localhost node e2e-screenshots/run.cjs
-# E2E 用系统 Chrome（playwright-core 绝对路径 require），先后台起 dev 再跑；100 断言
+E2E_BASE=http://127.0.0.1:5173/prism NO_PROXY=127.0.0.1,localhost node e2e-screenshots/run.cjs
+# E2E 用系统 Chrome（playwright-core 绝对路径 require），先后台起 dev 再跑；101 断言
 ```
 
 本地联调凭证：`/Users/congwuzhang/work/src/end/script/.env` 的 `OPEN_PLATFORM_CLIENT_ID/SECRET/BASE_URL`；sift 侧 `.env.local` 映射为 `VITE_WM_CLIENT_ID/SECRET/API_BASE`（已 gitignore，**严禁提交或写进回复**）。真接口集成测试：`WM_E2E=1 npx vitest run src/data/wm/live.integration.test.ts`（5 条，默认 skip）。
@@ -161,11 +161,10 @@ EC 账：年度 5 年 ≈ 3 万（+card/members ≈ 3.6 万首刷）；季度 8 
 
 ## 第三部分 · 待办与决策（按优先级）
 
-1. **commit / push（等用户指令）**：43 文件未 commit（`.zcode/` 已 gitignore 不入库）；本地 main 领先 origin 3 个提交，push 将一次上线 4 个提交（v1.0 重做 + PNG 导出 + 可访问性 + 本轮）。对外动作须显式确认；顺带决策 `package.json` 0.5.0→1.1.0 + 打 tag。
-2. **E2E 进 CI**：GitHub Actions 装 Chrome 跑 `e2e-screenshots/run.cjs`（现仅本地，100 断言）。
-3. **三表 peer 对比扩展到申万 L3 全成分**：需 AppId 验证行业成分（21 家 × 3 万 ≈ 63 万 EC），动手前必问用户是否接受消耗与分批策略；现行 `/compare` 已支持手动勾选，无需改架构。
-4. **可选小项**：产销量/附注模块因依赖年报原文域（当前三表 schema 无该字段）未挂载，属数据源缺口非代码缺口；首页「热门公司」chips 可改 RouterLink；旧 `REVIEW_AND_PLAN.md`/`IMPLEMENTATION_PLAN.md` 描述旧 IA 可归档。
-5. **远期**：BFF 共享缓存（官方站「打开即用」时再上）；更多行业镜头（引擎已通用，只差阈值表与样例）。
+1. **三表 peer 对比扩展到申万 L3 全成分**：需 AppId 验证行业成分（21 家 × 3 万 ≈ 63 万 EC），动手前必问用户是否接受消耗与分批策略；现行 `/compare` 已支持手动勾选，无需改架构。
+2. **产销量 / 附注模块**：依赖年报原文域（当前三表 schema 无该字段），属数据源缺口非代码缺口，待 schema 扩展后挂载。
+3. **可选小项**：首页「热门公司」chips 已改 RouterLink（无需再做）；旧 `REVIEW_AND_PLAN.md`/`IMPLEMENTATION_PLAN.md` 描述旧 IA 可归档。
+4. **远期**：BFF 共享缓存（官方站「打开即用」时再上）；更多行业镜头（引擎已通用，只差阈值表与样例）；版本号已 v1.1.0，下次重大发布再 bump。
 
 ## 第四部分 · 工作方式约定
 
