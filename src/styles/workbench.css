@@ -1290,7 +1290,11 @@ body {
 
 /* ── Home ───────────────────────────────────────────────────── */
 .wb-home {
+  width: 100%;
   max-width: 1080px;
+  /* .wb-shell 是纵向 flex：auto 外边距会关掉 stretch，必须显式 100%，
+     否则宽表格的 max-content 会把整页撑出 375px 视口 */
+  min-width: 0;
   margin: 0 auto;
   padding: 36px 24px 64px;
 }

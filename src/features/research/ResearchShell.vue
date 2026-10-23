@@ -9,6 +9,7 @@ import DataSourceDialog from '@/components/DataSourceDialog.vue';
 import SampleGallery from '@/features/workbench/SampleGallery.vue';
 import MobilePageNav from './MobilePageNav.vue';
 import ResearchPage from './ResearchPage.vue';
+import { companyPageOf } from '@/router/companyPage';
 
 // 单公司研究台（2026-10-23 多页化）：
 // 六个页面（总览 / 经营·资产 / 负债·权益 / 利润 / 现金流 / 估值·风险），路由驱动：
@@ -32,7 +33,7 @@ const store = useAppStore();
 const showSettings = ref(false);
 
 const symbol = computed(() => String(route.params.symbol ?? ''));
-const pageParam = computed(() => String(route.params.workspace ?? 'overview'));
+const pageParam = computed(() => companyPageOf(route.params.page));
 const activePage = computed(() => {
   const hit = PAGES.find((p) => p.id === pageParam.value);
   return hit ? hit.id : 'overview';
@@ -40,7 +41,7 @@ const activePage = computed(() => {
 const activeMeta = computed(() => PAGES.find((p) => p.id === activePage.value) ?? PAGES[0]);
 
 function switchPage(id: string): void {
-  void router.push(id === 'overview' ? `/company/${symbol.value}` : `/company/${symbol.value}/${id}`);
+  void router.push(`/company/${symbol.value}/${id}`);
   window.scrollTo({ top: 0 });
 }
 
@@ -130,7 +131,7 @@ watch(() => [symbol.value, store.stockList.length], ensure);
             <span class="wb-note">· {{ symbol }} · {{ store.dataMode === 'quarterly' ? '季报口径' : '年报口径' }}</span>
           </div>
 
-          <ResearchPage :ctx="store.analysisCtx!" :card="store.card" :tab="activePage" @switch="switchPage" />
+          <ResearchPage :ctx="store.analysisCtx!" :card="store.card" :tab="activePage" />
 
           <footer class="wb-footer">
             <span>数据来源：{{ store.sourceLabel }}</span>

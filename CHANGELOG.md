@@ -4,6 +4,14 @@
 
 ## [Unreleased] - 2026-10-22
 
+### 🚑 首屏空白热修（2026-10-23）
+
+- **根因**：`/company/:symbol/:page?` 的可选参数缺省时，vue-router 返回的是**空字符串**而不是 `undefined`；守卫用 `?? 'overview'` 兜底失效，`/company/600519` 被当成非法页并反复重定向，30 次后中止 → `/#/` 白屏。
+- **修复**：路由归一化抽成纯函数 `companyPageRedirect`，缺省页显式补全为 `/company/:symbol/overview`；`ResearchShell` 改读正确的 `page` 参数（此前读 `workspace`，六个分页永远停在总览）；旧 URL（financials/quality/peers/tracking）继续归一化。
+- **回归**：新增 `src/router/companyPage.test.ts` 覆盖空参数、六页放行、旧 URL 与非法页。
+- **顺带修复**：移动端 `/about` 宽表格把页面撑到 742px（`.wb-home` 在纵向 flex 中显式 `width:100%`），375px 横向溢出归零；补内联 SVG favicon，消除 `/favicon.ico` 404。
+- **验证**：typecheck / lint 0 错，单测 **289 passed / 5 skipped**，`vite preview` 以 `/prism/` base 冒烟六页 + about/compare（桌面与 375px），0 控制台错误、0 横向溢出。E2E 脚本仍是重构前的旧 IA，需单独迁移。
+
 ### 📐 财报深挖分报表 + 多指标对比口径修正
 
 - **财报深挖按报表分科目**：利润表「毛利率与费用 / 利润含金量 / ROE 杜邦」、资产负债表「资产结构 / 存货 / 固定资产」、现金流量表「现金流质量 / 现金转换周期 / 现金流八型」；切报表自动重置到该表默认科目并展开，点击可收起。
