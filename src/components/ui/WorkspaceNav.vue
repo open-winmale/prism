@@ -10,16 +10,14 @@ const items = [
   { id: 'overview', label: '概览', index: '01' },
   { id: 'financials', label: '财报', index: '02' },
   { id: 'quality', label: '质量', index: '03' },
-  { id: 'peers', label: '同业', index: '04' },
-  { id: 'valuation', label: '估值', index: '05' },
-  { id: 'risk', label: '风险', index: '06' },
-  { id: 'tracking', label: '跟踪', index: '07' },
+  { id: 'valuation', label: '估值', index: '04' },
+  { id: 'risk', label: '风险', index: '05' },
+  { id: 'tracking', label: '跟踪', index: '06' },
 ];
 
 const mobileItems = [
   { id: 'overview', label: '概览' },
   { id: 'financials', label: '财报' },
-  { id: 'peers', label: '同业' },
   { id: 'risk', label: '风险' },
   { id: 'tracking', label: '更多' },
 ];

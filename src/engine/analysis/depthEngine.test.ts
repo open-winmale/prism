@@ -63,7 +63,62 @@ describe('异动扫描 anomalyScan', () => {
       expect(s.next).toBeTruthy();
       expect(['up', 'down']).toContain(s.direction);
       expect(['high', 'mid']).toContain(s.severity);
+      // 六大问题域：每条信号都必须可归组
+      expect(['operating', 'asset', 'liability', 'equity', 'profit', 'cashflow']).toContain(s.domain);
     }
+  });
+
+  // 重要性门槛（2026-10-22）：占比非常小的科目不构成有意义的突变（门槛看当期占比）
+  it('占比 <1% 的金额科目即使巨幅跳变也不报（小数点级噪音过滤）', () => {
+    const base = maotai.reports[0].balance.total_assets ?? 1e12;
+    // 每期都只占总资产 0.45%~0.8%（低于默认 minShare=1%），同比 +80%
+    const tiny = base * 0.0045;
+    const ds = {
+      ...maotai,
+      reports: maotai.reports.map((r, i) => ({
+        ...r,
+        balance: { ...r.balance, other_receivables: i === 0 ? tiny : tiny * 1.8 },
+      })),
+    };
+    const signals = anomalySignals(ctxOf(ds), { limit: 50 });
+    expect(signals.filter((s) => s.itemKey === 'ORNET')).toHaveLength(0);
+  });
+
+  it('占比 ≥3% 的同科目跳变正常报出（重要性门槛不误伤大科目）', () => {
+    const base = maotai.reports[0].balance.total_assets ?? 1e12;
+    const big = base * 0.05; // 占总资产 5%，远超 minShare 与 3 倍下限
+    const ds = {
+      ...maotai,
+      reports: maotai.reports.map((r, i) => ({
+        ...r,
+        balance: { ...r.balance, other_receivables: i === 0 ? big : big * 2 },
+      })),
+    };
+    const signals = anomalySignals(ctxOf(ds), { limit: 50 });
+    expect(signals.filter((s) => s.itemKey === 'ORNET').length).toBeGreaterThan(0);
+  });
+
+  it('当期占比在 1%~3% 之间的跳变报出但强制降级为 mid', () => {
+    const base = maotai.reports[0].balance.total_assets ?? 1e12;
+    // 基期 0.4% → 当期 2%（落在 1~3 倍下限区间），同比 5 倍
+    const mid = base * 0.004;
+    const ds = {
+      ...maotai,
+      reports: maotai.reports.map((r, i) => ({
+        ...r,
+        balance: { ...r.balance, other_receivables: i === 0 ? mid : mid * 5 },
+      })),
+    };
+    const signals = anomalySignals(ctxOf(ds), { limit: 50 });
+    const hits = signals.filter((s) => s.itemKey === 'ORNET');
+    expect(hits.length).toBeGreaterThan(0);
+    for (const s of hits) expect(s.severity).toBe('mid');
+  });
+
+  it('行业附注：白酒语境下存货异动挂上「基酒/成品」附注', () => {
+    const signals = anomalySignals(maotaiCtx, { limit: 60, industry: 'liquor' });
+    const io = signals.find((s) => s.itemKey === 'IO');
+    if (io) expect(io.note).toContain('基酒');
   });
 
   it('按严重度再按幅度排序', () => {
@@ -248,5 +303,49 @@ describe('增长来源 growthSources', () => {
   it('runGrowthSources 输出瀑布图 + 明细表两块', () => {
     const chartTypes = runGrowthSources(maotaiCtx).blocks[0].charts.map((c) => c.type);
     expect(chartTypes).toEqual(['waterfall', 'table']);
+  });
+});
+
+// 重要性门槛强化（2026-10-23）：绝对额增量也必须够大——占比过线但增量太小不报
+describe('异动扫描 · 绝对额增量门槛', () => {
+  it('占比过线、增量过线、同比达标的科目正常报出（门槛不误伤）', () => {
+    const base = maotai.reports[0].balance.total_assets ?? 1e12;
+    // 5% → 6.75% 占比：同比 35%（远离白酒阈值 20% 边界）、增量 1.75% 总资产（> minShare 1%）→ 全过，应报出
+    const v0 = base * 0.05;
+    const v1 = base * 0.0675;
+    const ds = {
+      ...maotai,
+      reports: maotai.reports.map((r, i) => ({
+        ...r,
+        balance: { ...r.balance, other_receivables: i === 0 ? v0 : v1 },
+      })),
+    };
+    const signals = anomalySignals(ctxOf(ds), { limit: 60 });
+    expect(signals.filter((s) => s.itemKey === 'ORNET').length).toBeGreaterThan(0);
+  });
+
+  it('占比过线、同比达标、但绝对额增量 <1% 基项的科目不报', () => {
+    const base = maotai.reports[0].balance.total_assets ?? 1e12;
+    // 占比 25% 但增量只有 0.5% 总资产 → 同比 2%，低于阈值，本就不会报
+    // 更尖锐的构造：小基数科目
+    const v0 = base * 0.008;
+    const v1 = base * 0.012; // 占比过 1% 线；同比 50% 达标；增量 0.4% 总资产 < 1% → 被增量门槛拦下
+    const ds = {
+      ...maotai,
+      reports: maotai.reports.map((r, i) => ({
+        ...r,
+        balance: { ...r.balance, other_receivables: i === 0 ? v0 : v1 },
+      })),
+    };
+    const signals = anomalySignals(ctxOf(ds), { limit: 60 });
+    expect(signals.filter((s) => s.itemKey === 'ORNET')).toHaveLength(0);
+  });
+
+  it('每条信号携带 shareSeries（证据图数据）', () => {
+    const signals = anomalySignals(maotaiCtx, { limit: 10 });
+    for (const s of signals) {
+      expect(Array.isArray(s.shareSeries)).toBe(true);
+      expect(s.shareSeries.length).toBe(maotai.reports.length);
+    }
   });
 });

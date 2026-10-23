@@ -3,11 +3,12 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useAppStore } from '@/store/useApp';
 import { clearTokenCache } from '@/data/wm/auth';
 import { clearAllCaches } from '@/data/provider';
-import { describeError } from '@/data/wm/client';
-import { WmClient } from '@/data/wm/client';
+import { describeError, WmClient } from '@/data/wm/client';
+import guideOpenPlatform from '@/assets/guide/step-open-platform.png';
+import guideMyApps from '@/assets/guide/step-my-apps.png';
 
 // 数据源设置：分步引导用户免费申请 AppId → 填入 → 验证 → 生效。
-// 关键信息前置：「完全免费」——降低开通心理门槛。
+// 关键信息前置：「完全免费」——降低开通心理门槛；配截图的分步指引降低找入口的摩擦。
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -110,6 +111,7 @@ function close() {
           当前模式：<b>{{ store.dataSource === 'live' ? '实时接口' : '内置快照（离线演示）' }}</b>
           <template v-if="store.credential.source === 'env'">（凭证来自部署环境变量）</template>
           <template v-else-if="store.credential.source === 'user'">（凭证来自本机填写）</template>
+          <template v-else-if="store.credential.source === 'demo'">（内置体验密钥：多人共享额度、已限速；填自己的 AppId 可解除限制）</template>
         </div>
         <div v-if="store.fetchInfo.ecCost">
           上次取数 {{ store.fetchInfo.ecCost.toLocaleString() }} EC<template v-if="store.fetchInfo.cached">
@@ -120,15 +122,25 @@ function close() {
 
       <!-- ══ 步骤 1：申请引导 ══ -->
       <div v-if="step === 'guide'" class="mt-4">
-        <ol class="m-0 list-decimal space-y-2.5 pl-5 text-sm leading-6 text-slate-700">
+        <p class="m-0 rounded bg-sky-50 px-3 py-2 text-xs leading-6 text-sky-700">
+          当前已内置<b>体验密钥</b>供大家初次体验：多人共享额度、已限速。<b>申请自己的 AppId 额度更充足、不限速</b>，密钥只存本机。
+        </p>
+        <ol class="m-0 mt-3 list-decimal space-y-2.5 pl-5 text-sm leading-6 text-slate-700">
           <li>
             打开
             <a href="https://open.winmale.com/" target="_blank" rel="noopener" class="font-medium text-brand hover:underline"
               >open.winmale.com</a
             >
-            （赢麻了开放平台），注册 / 登录 —— <b>免费，支持微信扫码</b>
+            ，<b>微信扫码</b>注册 / 登录（免费）
           </li>
-          <li>进入「应用管理」→ 创建应用（名字随意，如 prism），系统自动生成 <b>ClientId</b> 和 <b>ClientSecret</b></li>
+          <li>
+            点右上角<b>「我的」</b>→ 进入<b>「开放平台」</b>
+            <img :src="guideOpenPlatform" alt="右上角「我的」→ 开放平台 入口截图" class="mt-1.5 w-full rounded-lg border border-slate-200" />
+          </li>
+          <li>
+            导航<b>「我的应用」</b>→ 查看应用信息，复制 <b>AppId（ClientId）</b>与 <b>Secret（ClientSecret）</b>
+            <img :src="guideMyApps" alt="「我的应用」页面，AppId 与 Secret 凭证区截图" class="mt-1.5 w-full rounded-lg border border-slate-200" />
+          </li>
           <li>回到这里粘贴两项凭证，本页会先验证再保存</li>
         </ol>
 

@@ -173,10 +173,10 @@ function exportCsv() {
               {{ row.cn }}
             </td>
             <td v-for="(v, i) in row.values" :key="i" class="is-num" :class="{ 'is-mine': i === 0 }">
-              <div>{{ yi(v) }}</div>
+              <div>{{ row.pct ? shareText(v) : yi(v) }}</div>
               <div v-if="!row.pct" class="wb-td-sub">{{ shareText(row.shares[i]) }}</div>
             </td>
-            <td class="is-num">{{ yi(row.median) }}</td>
+            <td class="is-num">{{ row.pct ? shareText(row.median) : yi(row.median) }}</td>
             <td class="is-num">
               <span v-if="row.rank != null" class="wb-rank" :class="rankClass(row.rank, row.n)">
                 {{ row.rank }}/{{ row.n }}

@@ -17,10 +17,14 @@ const props = withDefaults(
     reports: PeriodReport[];
     /** 打开时落在哪个视图；深链下钻时传 'doc' 直接进解读 */
     initialMode?: 'line' | 'bar' | 'table' | 'doc';
+    /** 行业附注：行业模版对该科目在该行业语境下的针对性解读（未命中不显示） */
+    industryNote?: string;
   }>(),
   { initialMode: 'line' },
 );
-const emit = defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const mode = ref<'line' | 'bar' | 'table' | 'doc'>(props.initialMode);
 const closeBtn = ref<HTMLButtonElement | null>(null);
@@ -213,11 +217,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
           <button ref="closeBtn" class="wb-dialog__close" @click="emit('close')">关闭 ESC</button>
         </div>
         <div class="wb-dialog__body">
-          <div class="wb-seg mb-3" role="group" aria-label="下钻视图">
-            <button :class="{ 'is-on': mode === 'line' }" @click="mode = 'line'">趋势</button>
-            <button :class="{ 'is-on': mode === 'bar' }" @click="mode = 'bar'">同比</button>
-            <button :class="{ 'is-on': mode === 'table' }" @click="mode = 'table'">数据</button>
-            <button :class="{ 'is-on': mode === 'doc' }" @click="mode = 'doc'">解读</button>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="wb-seg" role="group" aria-label="下钻视图">
+              <button :class="{ 'is-on': mode === 'line' }" @click="mode = 'line'">趋势</button>
+              <button :class="{ 'is-on': mode === 'bar' }" @click="mode = 'bar'">同比</button>
+              <button :class="{ 'is-on': mode === 'table' }" @click="mode = 'table'">数据</button>
+              <button :class="{ 'is-on': mode === 'doc' }" @click="mode = 'doc'">解读</button>
+            </div>
           </div>
 
           <EChart v-if="spec" :spec="spec" :height="260" />
@@ -266,6 +272,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
               <div class="wb-doc__row">
                 <dt>为什么盯它</dt>
                 <dd>{{ dossier.why }}</dd>
+              </div>
+              <div v-if="industryNote" class="wb-doc__row">
+                <dt>行业附注</dt>
+                <dd>{{ industryNote }}</dd>
               </div>
               <div class="wb-doc__row">
                 <dt>下一步</dt>

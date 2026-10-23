@@ -1,4 +1,4 @@
-import type { Num } from './schema/types';
+import type { Num, PeriodReport } from './schema/types';
 
 // 安全除法：分母为 0 / null / 营收缺失 时返回 null，避免 NaN 污染图表
 export function safeDiv(a: Num, b: Num): Num {
@@ -79,4 +79,10 @@ export function fmtNum(v: Num, digits = 2): string {
 // 把 period('2023-12-31') 转成展示标签 '2023'
 export function periodLabel(period: string): string {
   return period.slice(0, 4);
+}
+
+/** 图表类目标签：年报用年份，季报带 Q 标记（避免四根柱都叫 2024） */
+export function reportLabel(report: PeriodReport): string {
+  const sampling = report.sampling ?? 'Q4';
+  return sampling === 'Q4' ? report.period.slice(0, 4) : `${report.period.slice(0, 4)}${sampling}`;
 }

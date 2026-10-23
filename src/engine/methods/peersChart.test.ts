@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { peerStats, peersScatter, quantile, rankOf, type PeerLike } from './peersChart';
+import {
+  peerPercentileSpec,
+  peerStats,
+  peersScatter,
+  quantile,
+  rankOf,
+  selfVsIndustrySpec,
+  type PeerLike,
+} from './peersChart';
 
 function peer(symbol: string, pe: number | null, roe: number | null, pb = 3): PeerLike {
   return { symbol, name: `公司${symbol}`, pe_ttm: pe, roe_ttm: roe, pb };
@@ -75,5 +83,42 @@ describe('分位 rankOf / quantile', () => {
     const q = quantile('PB', null, [1, 2, 3], (v) => `${v}`);
     expect(q.display).toBe('—');
     expect(q.rank).toBeNull();
+  });
+});
+
+describe('散点换轴 / 横截面分位', () => {
+  it('peersScatter 支持 PB vs ROE，轴标签随指标变化', () => {
+    const { spec, xKey, yKey } = peersScatter(SAMPLE, '1', { xKey: 'pb', yKey: 'roe_ttm' });
+    expect(xKey).toBe('pb');
+    expect(yKey).toBe('roe_ttm');
+    expect(spec.xLabel).toContain('PB');
+    expect(spec.yLabel).toContain('ROE');
+  });
+
+  it('市值轴按亿元缩放（内部元 → 展示亿）', () => {
+    const items: PeerLike[] = [{ symbol: '1', name: '甲', pe_ttm: 10, roe_ttm: 0.1, mv: 2e11 }];
+    const { spec } = peersScatter(items, '1', { xKey: 'mv', yKey: 'pe_ttm' });
+    expect(spec.points?.[0].x).toBe(2000);
+  });
+
+  it('peerPercentileSpec：当前公司 PE/ROE 分位 60%，50% 中位线', () => {
+    const spec = peerPercentileSpec(SAMPLE, '3');
+    expect(spec.type).toBe('horizontalBar');
+    expect(spec.series?.[0].data).toHaveLength(4);
+    expect(spec.series?.[0].data?.[0]).toBeCloseTo(60, 0);
+    expect(spec.series?.[0].data?.[3]).toBeCloseTo(60, 0);
+    expect(spec.refLines?.[0]).toMatchObject({ value: 50, axis: 'x', kind: 'median' });
+  });
+
+  it('selfVsIndustrySpec：自身 3 年分位与行业横截面分位并列', () => {
+    const spec = selfVsIndustrySpec(
+      { symbol: '3', pe_ttm: 30, pct_pe_3y: 0.2, pct_pb_3y: 0.4 },
+      SAMPLE,
+      '3',
+    );
+    expect(spec?.series).toHaveLength(2);
+    expect(spec?.series?.[0].data).toEqual([20, 40]);
+    expect(spec?.series?.[1].data?.[0]).toBeCloseTo(60, 0);
+    expect(spec?.series?.[1].data?.[1]).toBeCloseTo(100, 0);
   });
 });

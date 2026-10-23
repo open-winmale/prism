@@ -9,6 +9,7 @@ export const manufacturingSample: ReportDataset = {
   symbol: 'DEMO-000001',
   name: '演示·制造（排雷样例）',
   industry: 'manufacturing',
+  meta: { galleryTag: '重资产 · 排雷演示' },
   disclaimer: '演示数据：合成构造，刻意包含多项财务异常，仅用于排雷模块演示，非真实公司。',
   // 同业基准：制造业毛利率中枢约 25%（演示常量；连接赢麻了开放平台可获取实时行业基准）
   peerBench: { gross_margin: 0.25 },

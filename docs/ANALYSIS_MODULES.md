@@ -6,12 +6,14 @@
 
 | 方法 | 回答的问题 | 典型图表 | 工厂函数 |
 | --- | --- | --- | --- |
-| **趋势** | 这个指标随时间怎么变？（同比/环比） | 折线、同比柱状 | `trendLine` / `yoyBars` |
+| **趋势** | 这个指标随时间怎么变？（同比/环比） | 折线、同比柱状、多指标同图 | `trendLine` / `yoyBars` / `metricComparisonSpec` |
 | **结构** | 内部构成占比如何？ | 饼图、堆叠占比 | `pieShare` / `stackedShares` / `percentBars` |
-| **横向** | 与同业/对手比如何？ | 分组柱状 | `compareBars` |
+| **横向** | 与同业/对手比如何？ | 可换轴散点、横截面分位、关键指标小倍数、分组柱 | `compareBars` / `peersScatter` / `peerPercentileSpec` / `peerKeyMetrics` |
 | **纵向**（共同比） | 利润/资产里每一项的相对分量？ | 共同比堆叠/表 | `commonSizeStacked` / `commonSizeTable` |
 
-> 模块只产出框架中立的 `ChartSpec`（`type: line|bar|pie|stackedBar|groupedBar|waterfall|table`），由 UI 翻译成 ECharts。
+> 模块只产出框架中立的 `ChartSpec`（`type: line|bar|horizontalBar|pie|scatter|stackedBar|groupedBar|waterfall|heatmap|table`），由 UI 翻译成 ECharts。
+>
+> 对比优先：同一张图优先放 2–3 个同单位序列，或统一「基期=100」；量纲不同禁止共用一根轴。门线/中位数/零线用 `refLines.kind` 区分配色，缺失保持 null。详见 [`CHART_DESIGN.md`](./CHART_DESIGN.md)。
 
 ## 2. 模块清单
 

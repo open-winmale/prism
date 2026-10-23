@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AnalysisContext } from '@/engine';
-import { peersScatter, quantile } from '@/engine/methods/peersChart';
+import {
+  peerPercentileSpec,
+  peersScatter,
+  quantile,
+} from '@/engine/methods/peersChart';
 import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
 import ChartFrame from '@/components/ui/ChartFrame.vue';
 
-// 同业面板（概览迷你表之外的完整形态）：KPI 分位 + 散点 + 分位条 + 全行业表。
-// 由 PeersWorkspace 与 /compare 独立页复用；数据来自 store.peers（live），快照下调用方负责降级提示。
+// 同业面板（概览迷你表之外的完整形态）：KPI 分位 + 散点 + 横截面分位 + 全行业表。
+// 简化版原则：散点固定 ROE×PE（最常见的「质 × 价」读法），不提供换轴——
+// 想自由组合维度属于专业版数据实验室的范畴。
+// 由「同业坐标」区块（估值工作区内嵌）与 /compare 独立页复用；数据来自 store.peers（live），快照下调用方负责降级提示。
 
 const props = defineProps<{
   ctx: AnalysisContext;
@@ -37,11 +43,20 @@ const current = computed(() => items.value.find((item) => item.symbol === props.
 
 const rank = computed(() => ({
   pe: quantile('PE', current.value?.pe_ttm, items.value.map((i) => i.pe_ttm), (v) => `${v.toFixed(1)}x`),
-  pb: quantile('PB', current.value?.pb, items.value.map((i) => i.pb), (v) => `${v.toFixed(2)}x`),
   roe: quantile('ROE', current.value?.roe_ttm, items.value.map((i) => i.roe_ttm), (v) => `${(v * 100).toFixed(1)}%`),
 }));
 
-const scatter = computed(() => peersScatter(props.peers?.items ?? [], props.ctx.dataset.symbol));
+const scatter = computed(() =>
+  peersScatter(props.peers?.items ?? [], props.ctx.dataset.symbol, {
+    xKey: 'pe_ttm',
+    yKey: 'roe_ttm',
+  }),
+);
+
+/** 横截面分位图：本公司 PE/PB/PS/ROE 在同行里的位置，50% 中位线 */
+const percentile = computed(() =>
+  items.value.length ? peerPercentileSpec(items.value, props.ctx.dataset.symbol) : null,
+);
 
 function num(value: number | null | undefined, digits = 1): string {
   return value == null || !Number.isFinite(value) ? '—' : value.toFixed(digits);
@@ -84,24 +99,21 @@ function yi(value: number | null | undefined): string {
   </div>
 
   <div class="wb-grid-2 mt-5">
-    <ChartFrame :spec="scatter.spec" source="开放平台 industry members" :height="260" />
     <div>
-      <div class="wb-section__sub mb-2">当前公司分位条（横截面）</div>
-      <div v-for="bar in [rank.pe, rank.pb, rank.roe]" :key="bar.label" class="mb-3">
-        <div class="flex items-center justify-between text-xs">
-          <span class="wb-chart__title">{{ bar.label }}</span>
-          <span class="wb-num text-slate-600">
-            {{ bar.display }}
-            <template v-if="bar.median != null"> · 中位 {{ bar.label === 'ROE' ? pct(bar.median) : num(bar.median, 2) + 'x' }}</template>
-          </span>
-        </div>
-        <div class="wb-meter mt-1">
-          <i :style="{ width: `${Math.round((bar.rank ?? 0) * 100)}%` }" />
-        </div>
-        <div class="wb-note mt-0.5">
-          {{ bar.rank == null ? '分位不可用（样本不足）' : `横截面第 ${pct(bar.rank, 0)} 分位 · n=${scatter.stats.n}` }}
-        </div>
+      <div class="wb-peer-axes">
+        <span class="wb-note">横轴 PE(TTM) × 纵轴 ROE(TTM) · 「质 × 价」一图看全 · 样本 n={{ scatter.stats.n }}</span>
       </div>
+      <ChartFrame :spec="scatter.spec" source="开放平台 industry members" :height="240" />
+    </div>
+    <div>
+      <div class="wb-section__sub mb-2">本公司横截面分位</div>
+      <ChartFrame
+        v-if="percentile"
+        :spec="percentile"
+        source="开放平台 industry members"
+        :height="240"
+      />
+      <p class="wb-note mt-1">50% 中位线 · 分位只表示位置，不判断好坏</p>
     </div>
   </div>
 

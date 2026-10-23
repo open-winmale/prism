@@ -20,13 +20,14 @@ export function runInventory(ctx: AnalysisContext): AnalysisResult {
     title: '存货周转率与周转天数',
     summary: '周转率越高、周转天数越短，货越好卖、积压越少。持续恶化是滞销或减值的先兆。',
     charts: [
+      // 周转率（次）与周转天数（天）量纲不同：左轴看次数、右轴看天数，绝不共用一根轴。
       trendLine(
         labels,
         [
           { name: '周转率(次)', values: turnover },
-          { name: '周转天数', values: days },
+          { name: '周转天数', values: days, axis: 'right' },
         ],
-        { title: '存货周转' },
+        { title: '存货周转', unit: '次', yLabelRight: '天' },
       ),
     ],
   });

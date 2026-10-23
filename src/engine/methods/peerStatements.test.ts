@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { peerStatementTable } from '@/engine/methods/peerStatements';
+import { peerKeyMetrics, peerMetricCharts, peerStatementTable } from '@/engine/methods/peerStatements';
 import type { PeriodReport, ReportDataset } from '@/engine/schema/types';
 import { dataset as maotai } from '@/data/samples/liquor/600519';
 import { dataset as wuliangye } from '@/data/samples/liquor/000858';
@@ -176,5 +176,55 @@ describe('三表横截面：真实样本', () => {
     // 制造样本年份与白酒样本不同，必须如实标注未对齐或给出共同年
     expect(typeof t.aligned).toBe('boolean');
     expect(t.alignedYear.length).toBeGreaterThan(0);
+  });
+});
+
+describe('同业关键指标（经营口径）', () => {
+  const companyA = mk('A', '甲', ['2023', '2024'], () => ({
+    income: { total_revenue: 1000e8, operating_cost: 400e8, net_profit_parent: 200e8 },
+    cashflow: { cash_from_sales: 1050e8, net_cash_operating: 220e8 },
+  }));
+  const companyB = mk('B', '乙', ['2024'], () => ({
+    income: { total_revenue: 500e8, operating_cost: 300e8, net_profit_parent: 50e8 },
+    cashflow: { cash_from_sales: 480e8, net_cash_operating: 40e8 },
+  }));
+
+  it('对齐后计算毛利率/净利率/收现比，并给出中位数与排名', () => {
+    const result = peerKeyMetrics(companyA, [companyB]);
+    expect(result.aligned).toBe(true);
+    expect(result.alignedYear).toBe('2024');
+
+    const gm = result.metrics.find((metric) => metric.key === 'gross_margin');
+    expect(gm?.values[0]).toBeCloseTo(0.6, 5);
+    expect(gm?.values[1]).toBeCloseTo(0.4, 5);
+    expect(gm?.median).toBeCloseTo(0.5, 5);
+    expect(gm?.rank).toBe(1);
+    expect(gm?.n).toBe(2);
+
+    const cash = result.metrics.find((metric) => metric.key === 'cash_to_revenue');
+    expect(cash?.values[0]).toBeCloseTo(1.05, 5);
+    expect(cash?.values[1]).toBeCloseTo(0.96, 5);
+  });
+
+  it('某家缺成本 → 该行不参与中位数与排名（缺失 ≠ 0）', () => {
+    const missing = mk('B', '乙', ['2024'], () => ({
+      income: { total_revenue: 500e8, net_profit_parent: 50e8 },
+    }));
+    const result = peerKeyMetrics(companyA, [missing]);
+    const gm = result.metrics.find((metric) => metric.key === 'gross_margin');
+    expect(gm?.values[1]).toBeNull();
+    expect(gm?.n).toBe(1);
+    expect(gm?.median).toBeCloseTo(0.6, 5);
+    expect(gm?.rank).toBe(1);
+  });
+
+  it('peerMetricCharts 生成横向柱、本公司高亮、x 轴中位数线', () => {
+    const charts = peerMetricCharts(peerKeyMetrics(companyA, [companyB]));
+    expect(charts).toHaveLength(6);
+    expect(charts[0].type).toBe('horizontalBar');
+    expect(charts[0].highlightIndex).toBe(0);
+    expect(charts[0].refLines?.[0]).toMatchObject({ axis: 'x', kind: 'median' });
+    expect(charts[0].note).toContain('2024');
+    expect(charts[0].series?.[0].data).toHaveLength(2);
   });
 });

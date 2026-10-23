@@ -347,8 +347,8 @@ export function runBeneish(ctx: AnalysisContext): AnalysisResult {
         title: '各因子把 M 推高了多少（从「一切如常」的 −2.48 出发）',
         unit: '分',
         refLines: [
-          { value: BENEISH_WATCH, label: `疑似线 ${BENEISH_WATCH}` },
-          { value: BENEISH_HIGH, label: `高危线 ${BENEISH_HIGH}` },
+          { value: BENEISH_WATCH, label: `疑似线 ${BENEISH_WATCH}`, kind: 'threshold' },
+          { value: BENEISH_HIGH, label: `高危线 ${BENEISH_HIGH}`, kind: 'threshold' },
         ],
         waterfall: { categories: cats, values, isTotal },
       },

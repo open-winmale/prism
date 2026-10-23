@@ -144,6 +144,18 @@ export const STMT_TREE: Record<'balance' | 'income' | 'cashflow', StmtRow[]> = {
     { k: 'LD', cn: '　流动比率', drv: { d: 'div', a: 'total_current_assets', b: 'total_current_liabilities' } },
     { k: 'SD', cn: '　速动比率', drv: { d: 'quick', a: 'total_current_assets', b: 'total_current_liabilities', m: 'inventories' } },
     { k: 'IBD', cn: '　有息负债', drv: { d: 'sum', as: ['short_term_loans', 'noncurrent_liab_1y', 'long_term_loans', 'bonds_payable', 'lease_liabilities'] } },
+    // ── 负债段与股东权益段（2026-10-22 补全）：
+    // 此前三表只有资产段，「负债问题、股东权益问题」无从发现突变。
+    // 字段在 schema/BS_MAP 全部有映射（contract_liabilities/total_liabilities/share_capital…）。
+    { k: 'TCL', cn: '流动负债合计', col: 'total_current_liabilities', section: true },
+    { k: 'AP', cn: '　应付票据及应付账款', drv: { d: 'add', a: 'notes_payable', a2: 'accounts_payable' } },
+    { k: 'CLC', cn: '　合同负债', col: 'contract_liabilities' },
+    { k: 'ARV', cn: '　预收款项（旧准则）', col: 'advance_receipts' },
+    { k: 'TL', cn: '负债合计', col: 'total_liabilities', section: true },
+    { k: 'SC', cn: '　股本', col: 'share_capital' },
+    { k: 'RE', cn: '　未分配利润', col: 'retained_earnings' },
+    { k: 'EQP', cn: '　归母股东权益', col: 'equity_parent' },
+    { k: 'TE', cn: '所有者权益合计', col: 'total_equity', section: true },
   ],
   income: [
     { k: 'TR', cn: '一、营业总收入', col: 'total_revenue', section: true },

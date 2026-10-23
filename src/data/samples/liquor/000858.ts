@@ -9,6 +9,7 @@ export const dataset: ReportDataset = {
   "meta": {
     "fragrance": "浓香",
     "priceBand": "高端",
+    "galleryTag": "消费白马 · 高毛利",
     "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2024；单位：元。2025 年报源数据利润表异常（营收同比约 -54.5%，与资产负债表/现金流量表不勾稽），已从样本移除，待数据源修复后补回。"
   },
   "periods": [

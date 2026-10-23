@@ -1,6 +1,8 @@
 import type { Num, PeriodReport, ReportDataset } from '../schema/types';
+import type { ChartSpec } from '../analysis/define';
 import { expandStatement, STMT_TREE } from '../derivations';
 import { fieldGetter } from '../compute';
+import { safeDiv, safeSub } from '../utils';
 import { shareDenominator } from './columns';
 
 // 三表逐行同业横截面：把同一张报表的同一行，摆到多家公司旁边对比。
@@ -76,7 +78,7 @@ function medianOf(vals: number[]): Num {
  * 期间对齐：取所有公司都有的最新年份。
  * 只认年报（sampling 缺省视为 Q4）——拿季报累计值和年报比是口径错位。
  */
-function pickPeriod(
+export function pickPeriod(
   datasets: ReportDataset[],
   align: boolean,
 ): { index: number[]; aligned: boolean; year: string; warnings: string[] } {
@@ -196,4 +198,143 @@ export function peerStatementTable(
 export function yi(v: Num, digits = 1): string {
   if (v == null) return '—';
   return (v / 1e8).toFixed(digits);
+}
+
+export interface PeerKeyMetric {
+  key: string;
+  name: string;
+  unit: 'percent';
+  /** 各公司比率（小数 0~1），顺序同 companies；缺为 null */
+  values: Num[];
+  /** 横截面中位数（小数） */
+  median: Num;
+  /** 本公司排名（1 = 最大；只表达位置，不判断好坏） */
+  rank: number | null;
+  /** 参与统计的公司数（排除缺值） */
+  n: number;
+}
+
+export interface PeerKeyMetrics {
+  companies: PeerCompany[];
+  metrics: PeerKeyMetric[];
+  alignedYear: string;
+  aligned: boolean;
+  warnings: string[];
+}
+
+interface KeyMetricDef {
+  key: string;
+  name: string;
+  get: (report: PeriodReport) => Num;
+}
+
+/**
+ * 同业关键经营指标（不是估值指标）：毛利率、净利率、收现比、CFO/营收、负债率、存货/资产。
+ * 与 peerStatementTable 共用期间对齐逻辑；缺失不参与中位数与排名。
+ * 纯计算，0 新增 EC——数据由调用方按需加载（见 ComparePage）。
+ */
+export function peerKeyMetrics(
+  main: ReportDataset,
+  others: ReportDataset[],
+  opts: PeerCompareOptions = {},
+): PeerKeyMetrics {
+  const align = opts.align ?? true;
+  const datasets = [main, ...others];
+  const { index, aligned, year, warnings } = pickPeriod(datasets, align);
+  const reports = datasets.map((ds, i) => ds.reports[Math.min(index[i], ds.reports.length - 1)]);
+
+  const companies: PeerCompany[] = datasets.map((ds, i) => ({
+    symbol: ds.symbol,
+    name: ds.name,
+    period: reports[i].period,
+    annual: (reports[i].sampling ?? 'Q4') === 'Q4',
+  }));
+
+  const defs: KeyMetricDef[] = [
+    {
+      key: 'gross_margin',
+      name: '毛利率',
+      get: (report) =>
+        safeDiv(
+          safeSub(report.income.total_revenue ?? null, report.income.operating_cost ?? null),
+          report.income.total_revenue ?? null,
+        ),
+    },
+    {
+      key: 'net_margin_parent',
+      name: '归母净利率',
+      get: (report) => safeDiv(report.income.net_profit_parent ?? null, report.income.total_revenue ?? null),
+    },
+    {
+      key: 'cash_to_revenue',
+      name: '销售收现比',
+      get: (report) => safeDiv(report.cashflow.cash_from_sales ?? null, report.income.total_revenue ?? null),
+    },
+    {
+      key: 'cfo_to_revenue',
+      name: 'CFO/营收',
+      get: (report) => safeDiv(report.cashflow.net_cash_operating ?? null, report.income.total_revenue ?? null),
+    },
+    {
+      key: 'debt_to_assets',
+      name: '资产负债率',
+      get: (report) => safeDiv(report.balance.total_liabilities ?? null, report.balance.total_assets ?? null),
+    },
+    {
+      key: 'inventory_to_assets',
+      name: '存货/总资产',
+      get: (report) => safeDiv(report.balance.inventories ?? null, report.balance.total_assets ?? null),
+    },
+  ];
+
+  const metrics: PeerKeyMetric[] = defs.map((def) => {
+    const values = reports.map((report) => def.get(report));
+    const present = values
+      .map((value, i) => ({ value, i }))
+      .filter((item): item is { value: number; i: number } => isNum(item.value));
+    const sorted = [...present].sort((a, b) => b.value - a.value);
+    const mineIdx = sorted.findIndex((item) => item.i === 0);
+    return {
+      key: def.key,
+      name: def.name,
+      unit: 'percent',
+      values,
+      median: medianOf(present.map((item) => item.value)),
+      rank: mineIdx >= 0 ? mineIdx + 1 : null,
+      n: present.length,
+    };
+  });
+
+  return { companies, metrics, alignedYear: year, aligned, warnings };
+}
+
+/**
+ * 关键指标小倍数图：每个指标一张横向柱，本公司高亮、中位数参考线。
+ * 统一百分比单位，避免把不同量纲硬塞进一张图。
+ */
+export function peerMetricCharts(result: PeerKeyMetrics): ChartSpec[] {
+  const categories = result.companies.map((company) => company.name);
+  return result.metrics.map((metric) => {
+    const median = metric.median == null ? null : Number((metric.median * 100).toFixed(1));
+    return {
+      type: 'horizontalBar',
+      title: metric.name,
+      unit: '%',
+      yFormat: 'percent',
+      categories,
+      series: [
+        {
+          name: metric.name,
+          data: metric.values.map((value) => (value == null ? null : Number((value * 100).toFixed(1)))),
+        },
+      ],
+      highlightIndex: 0,
+      refLines:
+        median == null
+          ? []
+          : [{ value: median, label: `中位数 ${median}%`, axis: 'x', kind: 'median' }],
+      note: `${result.aligned ? `期间对齐 ${result.alignedYear}` : '未对齐（各公司最新年报）'} · n=${metric.n}`,
+      legend: false,
+    };
+  });
 }

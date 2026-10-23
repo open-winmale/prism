@@ -153,6 +153,8 @@ export interface ReportDataset {
     fragrance?: string;
     priceBand?: string;
     sourceNote?: string;
+    /** 样板画廊的一句话场景标签（如「消费白马 · 盈利稳健」） */
+    galleryTag?: string;
     cashScope?: 'standard' | 'finance-subsidiary';
     /** 最新一期审计意见（raw.opinionType）；示例快照可为空 */
     auditOpinion?: string;

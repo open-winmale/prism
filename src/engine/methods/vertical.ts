@@ -2,7 +2,7 @@ import type { ChartSpec } from '../analysis/define';
 import type { Num } from '../schema/types';
 
 // 方法四：纵向对比（共同比报表 common-size）
-// 把报表每一项表示为「占基项的比例」，看结构随年份变化。
+// 把报表每一项表示为「占总资产（资产负债表）或占营收（利润/现金流）的比例」，看结构随年份变化。
 export interface CommonSizeRow {
   label: string;
   values: Num[]; // 与 periods 对齐（已为比例 0~1，或 null）

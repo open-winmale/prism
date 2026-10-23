@@ -61,10 +61,12 @@
 ### 3.1 桌面（≥1024px）
 
 ```
-┌ Topbar 56px：品牌 · 搜索 · 数据源 · 专业版 ↗ ┐
+┌ Topbar 56px：品牌 · 搜索 · 来源状态 · 专业版 ↗ ┐
+├ Main：配额横幅（可关闭）→ 样板画廊 → CompanyHeader → 工作区内容 → 页脚 ┤
 ├ Sidebar 216px：工作区 01–07 · 来源/方法论 ┤
-├ Main：CompanyHeader →（阅读提示）→ 工作区内容 → 页脚 ┤
 ```
+
+`/#/` 直接重定向到默认样板报告（贵州茅台）；样板画廊 4 个案例横向排列，当前样板高亮，切换走内置快照 0 EC。
 
 ### 3.2 移动（<768px）
 
@@ -73,14 +75,14 @@
 
 ### 3.3 路由
 
-`/company/:symbol/:workspace?`，workspace ∈ overview|financials|quality|peers|valuation|risk|tracking；`/analyze?symbol=` 重定向到 `/company/:symbol/overview`。
+`/` 重定向到 `/company/600519/overview`（默认样板）；`/company/:symbol/:workspace?`，workspace ∈ overview|financials|quality|peers|valuation|risk|tracking；`/analyze?symbol=` 重定向到 `/company/:symbol/overview`；`/about`、`/method` 为关于页；`/about?focus=quota` 滚到配额说明。
 
 ---
 
 ## 4. 组件规格（`src/components/ui/`）
 
 ### 4.1 CompanyHeader
-公司名+代码 / 行业·期间·审计·SourceBadge / 右侧行情（价格、涨跌红绿、PE/PB/ROE/PE 3Y/股息/截至）。快照模式右侧显示「示例快照 · 无实时行情」。
+公司名+代码 / 行业·期间·审计·SourceBadge / 右侧行情（价格、涨跌红绿、PE/PB/ROE/PE 3Y/股息/截至）。快照模式右侧显示「示例快照 · 无实时行情」。仅私有 AppId + 当前快照时显示「拉取最新实时数据」，点击先给出 EC 预估再确认。
 
 ### 4.2 VerdictStrip
 左边框 3px 语义色；状态徽章（稳健/需关注/高风险/数据不足）+ 完整度（N/M 项已核查）+ 审计 + as-of；thesis 一句话；证据 chips + 风险 chips（琥珀底）。
@@ -98,6 +100,16 @@
 - 科目行可点（`is-clickable`，hover 品牌色下划线）→ `LineItemDialog`；section 行不可点。
 - 季度口径：流量为单季视图（`singleQuarterView`），子列同比 = **同季对比**（`sameQuarterYoyOf`），子列头显示「同比(同季)」。
 - 脚注：单位 / 子列口径 / 占比分母 / 缺失规则。
+
+### 4.5.1 科目深挖（按报表分科目）
+
+| 报表 | 深挖科目（默认第一个展开） |
+| --- | --- |
+| 利润表 | 毛利率与费用 / 利润含金量 / ROE 杜邦 |
+| 资产负债表 | 资产结构 / 存货 / 固定资产 |
+| 现金流量表 | 现金流质量 / 现金转换周期 / 现金流八型 |
+
+切报表时自动重置为该表默认科目并展开；点击当前科目可收起，点击其他科目切换。深链切换报表同样落到默认科目。
 
 ### 4.6 LineItemDialog
 `role=dialog aria-modal`；头部（科目名 / 区间 / 来源（三表科目|派生口径）/ 单位）+ 关闭（ESC / 遮罩 / 按钮）；三视图（趋势折线 / 同比柱 / 数据表：原值+同比+占比）；高 260px。
@@ -117,13 +129,23 @@
 
 | 项 | 规格 |
 | --- | --- |
-| 默认高度 | 240（`h-60 lg:h-72`）；ChartFrame 可传 `height`（小倍数 150、下钻 260） |
-| 参考线 | 琥珀虚线 1px + 端点标签；例：收现比 100%、CFO 警戒线、行业中位数（x/y 轴） |
-| 散点 | 同业灰点 8px、当前公司红点 12px + 名称标签；tooltip「PE x / ROE y%」 |
-| 序列色 | §2.1 图表色板；空数据文字占位 |
-| 坐标轴 | 10px；y 轴名 = 单位 |
+| 默认高度 | 240（`h-60 lg:h-72`）；ChartFrame 可传 `height`（概览小倍数 180、关键指标 160、自选对比 300、下钻 260） |
+| 参考线 | 三类语义：门线琥珀 `#b45309`、中位数/基准灰 `#94a3b8`、零线浅灰 `#cbd5e1`；1px 虚线 + 端点标签。**必须注册 `MarkLineComponent`**，否则整类失效 |
+| 散点 | 同业灰点 9px、当前公司红点 13px + 名称标签；X/Y 轴可换（PE/PB/PS/ROE/市值）；中位数十字线；缺失/PE≤0 不进样本 |
+| 序列色 | §2.1 图表色板；单序列自动 10% 面积填充；基准序列灰虚线 |
+| 坐标轴 | 11px；隐藏 axisLine/axisTick；仅水平细虚线网格；`containLabel: true` |
+| 图例 | 单序列隐藏；多序列置顶右侧 11px；可点击隐藏 |
+| Tooltip | 十字准星；名称/数值/单位；缺失 `—`；白底细边、`confine` |
+| 横条 | `horizontalBar`：类目反转（第一项在最上）；本公司高亮、同业弱化；末端数值白底 |
+| 指标对比 | 概览 2×2 每张 2–3 序列；自选对比支持常用 10 + 三表 37 个科目（搜索/分组/快捷组合，最多 4）。1 种单位默认原值单轴、2 种单位默认原值双轴、≥3 种才用基期=100；货币原值默认柱状，其余线形，可手动切换。指数模式明确标注「非原值」，序列单位「指数」 |
+| 行业对比 | 估值横截面（members，0 额外 EC）+ 用户已加载同行三表；横截面分位 ≠ 自身历史分位，必须标注 n |
+| 自适应 | 容器 `ResizeObserver`；≤900px 2×2 单列；≤520px KPI 两列；图表不得横向溢出 |
+| EC | 图表不触发取数；`/compare` 关键指标只在用户确认加载同行后出现 |
 
-小倍数：概览「核心趋势」2×2（营收 / 归母净利 / 毛利率+自身均值线 / CFO/净利+100% 线），≤767px 单列。
+小倍数：概览「核心趋势」2×2（规模与现金含量 / 增速对比 / 利润率对比 / CFO 净利+100% 线），≤767px 单列。
+自选对比：指标 chips（1–4）+ 模式分段，一处切换，不与 2×2 同时展开。
+
+> 完整审计、ChartSpec 语汇与图表目录见 [`CHART_DESIGN.md`](./CHART_DESIGN.md)。
 
 ---
 
@@ -147,7 +169,7 @@
 | 768×1024 | KPI 三列、底部导航出现、表格可滚 |
 | 375×812 | 底部导航 5 项、结论条在首屏（E2E 断言）、KPI 两列、表格横滑、图表单列 |
 
-基线截图：`e2e-screenshots/ui-baseline/{home,overview,financials}-{desktop,tablet,mobile}.png`。
+基线截图：`e2e-screenshots/ui-baseline/{about,overview,financials}-{desktop,tablet,mobile}.png`。
 
 ---
 

@@ -39,6 +39,7 @@ function download() {
     </figcaption>
     <EChart ref="chartRef" :spec="spec" :height="height" />
     <div class="wb-chart__foot">
+      <span v-if="spec.note">{{ spec.note }}</span>
       <span v-if="spec.refLines?.length">
         参考线：{{ spec.refLines.map((l) => l.label ?? String(l.value)).join('；') }}
       </span>

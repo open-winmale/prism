@@ -2,7 +2,7 @@ import type { AnalysisContext, AnalysisModule, AnalysisResult, InsightBlock } fr
 import { LAOTANG_GROSS_MARGIN_NOTE } from '../laotang/rules';
 import { periodLabel } from '../utils';
 import { compareBars } from '../methods/horizontal';
-import { trendLine } from '../methods/trend';
+import { trendLine, type TrendSeries } from '../methods/trend';
 
 export function runGrossMargin(ctx: AnalysisContext): AnalysisResult {
   const labels = ctx.computed.periods.map(periodLabel);
@@ -15,9 +15,9 @@ export function runGrossMargin(ctx: AnalysisContext): AnalysisResult {
 
   const blocks: InsightBlock[] = [];
 
-  const gmSeries = [{ name: '毛利率', values: gm.map((v) => (v == null ? null : v * 100)) }];
+  const gmSeries: TrendSeries[] = [{ name: '毛利率', values: gm.map((v) => (v == null ? null : v * 100)) }];
   if (ctx.peerBench?.gross_margin != null) {
-    gmSeries.push({ name: '同业基准', values: gm.map(() => ctx.peerBench!.gross_margin! * 100) });
+    gmSeries.push({ name: '同业基准', values: gm.map(() => ctx.peerBench!.gross_margin! * 100), benchmark: true });
   }
   blocks.push({
     id: 'gm_trend',

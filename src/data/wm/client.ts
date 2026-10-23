@@ -52,13 +52,32 @@ function pickError(body: RawEnvelope, header: string | null, httpStatus: number)
 
 export class WmClient {
   readonly base: string;
+  /** 体验密钥（demo）来源的最小调用间隔（ms）：共享配额的客户端节流，0 = 不节流 */
+  private minIntervalMs = 0;
+  private lastCallAt = 0;
 
-  constructor(private creds: WmCredentials) {
+  constructor(private creds: WmCredentials, opts?: { minIntervalMs?: number }) {
     this.base = (creds.apiBase || DEFAULT_API_BASE).replace(/\/+$/, '');
+    if (opts?.minIntervalMs && opts.minIntervalMs > 0) this.minIntervalMs = opts.minIntervalMs;
+  }
+
+  /** 串行节流门：体验密钥场景下相邻调用保持最小间隔，避免并发抓取打爆共享配额 */
+  private async throttleGate(signal?: AbortSignal): Promise<void> {
+    if (!this.minIntervalMs) return;
+    const now = Date.now();
+    const wait = this.lastCallAt + this.minIntervalMs - now;
+    this.lastCallAt = now + Math.max(0, wait);
+    if (wait > 0) {
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, wait);
+        signal?.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+      });
+    }
   }
 
   /** 执行一个 skill，返回 data（泛型由调用方声明）；自动处理令牌与 401 重试 */
   async runSkill<T = unknown>(skillId: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<SkillRunResult<T>> {
+    await this.throttleGate(signal);
     const call = async (isRetry: boolean): Promise<SkillRunResult<T>> => {
       const token = await getAccessToken(this.creds, signal);
       const res = await fetch(`${this.base}/v1/skills/${encodeURIComponent(skillId)}/run`, {

@@ -7,11 +7,11 @@
 
 ---
 
-## ⚠️ 接手前必读的三条硬状态（2026-10-22 11:25 UTC+8 更新）
+## ⚠️ 接手前必读的三条硬状态（2026-10-22 13:10 UTC+8 更新）
 
-1. **工作区干净，全部已提交并 push `origin/main`（prism）**：最新 `d440d7c`（更名 prism）已推送；此前 `c34a46a`(tag v1.1.0：Phase6 + 375px 专项 + 口径与校验修复) 与 `00d0518`(E2E 进 CI：ubuntu runner 跑 101 断言) 均已在 main 上推送。GitHub Pages 已部署新 bundle。除非有新改动，无需再 commit/push。
-2. **四门禁 2026-10-22 11:21 实测 4/4 全绿**（新 playwright-core 1.64.1 解析路径下 E2E 101/101 亦过）。
-3. **门禁真实数字（2026-10-22 实测）**：单测 **232 passed / 5 skipped**；`npm run typecheck` 0 错；`npm run lint` 0 warning/0 error；E2E **101 断言全绿**；build 通过。
+1. **工作区有新一批未提交改动（优化计划第一批：SkillHub 安装会话 + 体验密钥层 + 小改合集 + 多行业标注）**，等用户确认 commit/push。**本机已安装赢麻了 SkillHub 全量 37 技能包**（`~/.zcode/skills/`，凭证 `~/.winmale/credentials.env`，冒烟 discover 600519 命中）。
+2. **四门禁 2026-10-22 实测 4/4 全绿**；E2E **140/140**（默认样板/样板画廊/配额横幅/三表任选/双轴/深挖分报表/图表/关于页）。
+3. **门禁真实数字**：单测 **278 passed / 5 skipped**；typecheck 0 错；lint 0 警告；build 过。**体验密钥上线注意**：部署后新访客可零注册查任意 A 股（共享额度）；E2E/CI 已有 `disable-demo-credential` 防雷标记，勿删；轮换密钥 = 改 `credentials.ts` 的 DEMO_ 常量重新部署。
 
 ---
 
@@ -29,7 +29,8 @@
 
 **已落地（全部有单测/E2E 背书，见 §2.2 文件地图）**：
 
-- **七工作台 IA**：`/company/:symbol/:workspace?`，workspace ∈ overview|financials|quality|peers|valuation|risk|tracking；桌面左栏 + 移动底部导航；`/compare` 独立对比页（三表逐行同业横截面，勾选渐进加载、默认 0 EC）；`/method` 方法论页；404 兜底。
+- **七工作台 IA**：`/company/:symbol/:workspace?`，workspace ∈ overview|financials|quality|peers|valuation|risk|tracking；桌面左栏 + 移动底部导航；`/compare` 独立对比页（三表逐行同业横截面，勾选渐进加载、默认 0 EC）；`/method`、`/about` 方法论/配额页；404 兜底。
+- **打开即样板（2026-10-22）**：`/` 重定向到默认样板报告（贵州茅台）；工作台顶部 4 案例样板画廊（3 真实白酒 + 演示·制造，快照 0 EC，切换强制年度口径）；顶栏来源状态徽章 + 首访配额横幅；`/about?focus=quota` 解释快照/体验密钥/私有 AppId；仅私有 AppId + 快照时显示「拉取最新实时数据」（带 EC 确认，`forceLive` 绕过内置快照）。
 - **三表列组工作台**：每期「原值 + 同比/占比」子列、双行表头 sticky、科目行可点 → `LineItemDialog`（趋势/同比/数据/**解读**四视图，ESC 关闭）、5/10 年窗口、CSV 导出。
 - **数据层**（v2）：`card` + `members` + mapper（缺字段一律 null）；缓存 v2（换 AppId 清缓存重拉）。
 - **质量模型**：Altman Z / Piotroski F9 / Sloan 应计 / SGR / ROIC−WACC / Beneish M-Score（8 因子，开源版差异化，专业版也没有）。
@@ -45,6 +46,8 @@
   - **下钻解读**：科目下钻第 4 视图「解读」（`itemSemantics.dossierOf` 驱动）；`LineItemDialog` 新增 `initialMode` prop。
   - **资产归位**：此前 10 个零挂载模块已挂 7 个（现金流八型→财报区；杜邦/毛利率/净利/六维体检分/增长来源/异动扫描→质量区）；风险区挂回 roe/grossMargin/netProfit/qualityCheck + Beneish 首位；估值区加 `quantile()` 行业横截面分位条（PE/PB/PS/ROE，与自身 3 年分位并列并明示「是两回事」）。
   - **三表逐行同业横截面** `/compare`：同行科目并排 + 中位数 + 排名 + 偏离倍数 + 整行着色；期间对齐（缺则标注「未对齐」）；缺失不进中位数/排名；EC 默认 0，>0 才弹确认。
+  - **图表系统重设计（2026-10-22）**：修复 `MarkLineComponent` 漏注册导致参考线全失效；概览 2×2 改多指标（营收/净利/CFO、三种同比、毛利率/净利率、CFO 净利+100% 门线）；新增三表任选指标对比（常用 10 + 三表 37 科目，搜索/分组/快捷组合，1 单位原值单轴、2 单位原值双轴、3+ 指数；线/柱切换；财报科目行可「加入多指标对比」）；同业散点可换轴 + 横截面分位 + 自身 vs 行业分位；`/compare` 关键经营指标小倍数；存货双轴；质量六维横向柱；统一 11px 轴/虚线网格/十字准星 tooltip/ResizeObserver；0 新增 EC。详见 [`CHART_DESIGN.md`](./CHART_DESIGN.md)。
+  - **深挖分报表 + 对比口径修正（2026-10-22）**：利润表「毛利率与费用/利润含金量/ROE 杜邦」、资产负债表「资产结构/存货/固定资产」、现金流量表「现金流质量/现金转换周期/现金流八型」，每表默认展开第一个；毛利率 >100% 实为旧默认「基期=100」指数误读，数据本身 91.3%，现改为按单位自动原值/双轴/指数，指数模式标「非原值」、序列单位「指数」，并加茅台毛利率回归测试。
 - **口径修复（暴露于实测，单测钉死）**：CF 共同比分母改「流量÷营收、期末现金÷总资产」；NCF 行改 `sum_all(经营+投资+筹资)`；`yoy()` 基期为正硬约束；异动单位比率用%/结构用 pct 不混用。
 - **移动端 375px 专项（2026-10-22 完成）**：实测诊断推翻「佐证列被隐藏」旧描述——真实问题是条件条 316px 吃掉首屏 + 数据区可见仅 242px 无横滚线索。新增 `FilterCollapse`（条件条窄屏收起为一行如实摘要，桌面不回归）与 `TableScroll`（右缘渐隐指示，滚到底消失）两个共享组件；窄屏密度收紧；一屏完整期间 1.7→2.7 个；E2E +6 断言。
 - **数据校验零噪声（2026-10-22，用户实测泸州老窖触发）**：移除「净利润≥归母」规则（少数股东损益为负是恒等式正常结果）；量级规则收窄到规模字段（小字段如长期待摊费用几十万是真实数据）；茅台样本补 `cashScope: finance-subsidiary`（期末现金含财务公司存放央行/同业，实时链路有 detectCashScope、快照此前漏标）。三样本「0 噪声告警」+ E2E「泸州老窖概览无校验噪声」已钉死。
@@ -66,7 +69,7 @@ Vue3 + Vite5 + TS(strict) + UnoCSS + ECharts(core 按需) + pinia + vitest + oxl
 npm run typecheck && npm run lint && npm test -- --run && npm run build   # 四门禁，每批次必跑
 npm run dev    # 5173
 E2E_BASE=http://127.0.0.1:5173/prism NO_PROXY=127.0.0.1,localhost node e2e-screenshots/run.cjs
-# E2E 用系统 Chrome（playwright-core 绝对路径 require），先后台起 dev 再跑；101 断言
+# E2E 用系统 Chrome（playwright-core 绝对路径 require），先后台起 dev 再跑；140 断言
 ```
 
 本地联调凭证：`/Users/congwuzhang/work/src/end/script/.env` 的 `OPEN_PLATFORM_CLIENT_ID/SECRET/BASE_URL`；sift 侧 `.env.local` 映射为 `VITE_WM_CLIENT_ID/SECRET/API_BASE`（已 gitignore，**严禁提交或写进回复**）。真接口集成测试：`WM_E2E=1 npx vitest run src/data/wm/live.integration.test.ts`（5 条，默认 skip）。
@@ -82,26 +85,41 @@ E2E_BASE=http://127.0.0.1:5173/prism NO_PROXY=127.0.0.1,localhost node e2e-scree
 | `engine/derivations.ts` | **`sum_all`（缺任一项→null）**；NCF 行修复 |
 | `engine/utils.ts` | **`yoy()` 基期为正硬约束**（基期≤0→null） |
 | `engine/methods/columns.ts` | 列组纯函数；`shareDenominator` 修 CF 各段分母 |
-| `engine/methods/peersChart.ts` | `peersScatter`/`quantile`/`rankOf`（横截面） |
-| `engine/methods/peerStatements.ts` | **`peerStatementTable(kind, main, others, {outlierGap})`**：同行业科目并排+中位数+排名+偏离，缺失不进统计 |
+| `engine/methods/peersChart.ts` | `peersScatter`（X/Y 可换轴）/ `peerPercentileSpec` / `selfVsIndustrySpec` / `quantile` / `rankOf`（横截面） |
+| `engine/methods/peerStatements.ts` | `peerStatementTable`：同行业科目并排+中位数+排名+偏离；`peerKeyMetrics` + `peerMetricCharts`：关键经营指标横截面；`pickPeriod` 导出复用 |
+| `engine/methods/compare.ts` | **新增**：`comparableMetrics`（常用 10）+ `statementMetrics`（三表 37 科目，去重 5 行）+ `statementMetricKey` + `metricComparisonSpec`（1 单位原值/2 单位双轴/3+ 指数；线/柱） |
 | `engine/analysis/mineDetect.ts` | 老唐排雷 10 项；四态；季度切同季同比 |
 | `engine/analysis/qualityModels.ts` | Altman/Piotroski/Sloan/SGR/ROIC |
-| `engine/analysis/beneish.ts` | **新增**：8 因子 M-Score，门线 −2.22/−1.78，DEPI 无字段→中性值，缺≥3 因子→na |
+| `engine/analysis/beneish.ts` | **新增**：8 因子 M-Score，门线 −2.22/−1.78（`kind:'threshold'`），DEPI 无字段→中性值，缺≥3 因子→na |
 | `engine/analysis/anomalyScan.ts` | **新增**：同比±30% + 结构±5pct 双线扫描 |
 | `engine/analysis/growthSources.ts` | **新增**：总资产增量瀑布拆解，缺失降级合并「股东的钱」 |
 | `engine/analysis/itemSemantics.ts` | **新增**：41 科目 what/how/why/next 档案 |
-| `engine/analysis/define.ts` | ChartSpec 增 `waterfall`/`heatmap`/`combo` 类型与字段 |
+| `engine/analysis/define.ts` | ChartSpec：`horizontalBar`；`refLines.kind`（threshold/median/zero）；series `benchmark/dashed/color/unit`；`yFormat/highlightIndex/legend/note` |
 | `engine/schema/verify.ts` | 数据准入门禁；规则 9 = 相邻期营收/净利 YoY>±50% → warn |
 | `src/data/wm/{client,mapper,cache}.ts` | 开放平台直连；mapper 缺失 null；缓存 v2 |
 | `src/store/useApp.ts` | **provider 实例存普通变量**；`analysisDataset`；`compareTargets` ref + `estimateCompareEc()` |
-| `src/features/charts/EChart.vue` | **新增 waterfall/heatmap/柱+线双轴** 翻译 |
+| `src/features/charts/option.ts` | **新增**：ChartSpec → ECharts option 纯函数（参考线/图例/tooltip/横条/深合并），可单测 |
+| `src/features/charts/EChart.vue` | 注册 `MarkLineComponent`/`AxisPointerComponent`；容器 `ResizeObserver`；空态/PNG 导出 |
+| `src/features/charts/ChartPreview.vue` | **新增**：dev-only `/_chart-preview`，与工作台共用同一组 ChartSpec |
+| `src/features/workbench/MetricCompare.vue` | **新增**：三表任选对比（颜色圆点 chips + 两列行式候选 + 快捷组合 + 最多 4；自动原值/双轴/指数 + 线/柱切换） |
+| `src/features/workbench/FinancialsWorkspace.vue` | 按报表分深挖科目 + 默认展开；可折叠「多指标对比」面板 + 工具栏入口；科目行「加入多指标对比」预选 |
+| `src/features/workbench/overviewCharts.ts` | **新增**：概览 2×2 spec，预览页复用 |
 | `src/components/ui/StatementTable.vue` | **条件选项 props**（yoy/结构阈值/只看跳变）+ 异动高亮 wb-flag-dot |
 | `src/components/ui/LineItemDialog.vue` | **新增第 4 视图「解读」** + `initialMode` prop |
 | `src/components/ui/PeerStatementTable.vue` | **新增**：`/compare` 同业横截面表，props main/others/outlierGap |
 | `src/components/ui/FilterCollapse.vue` | **新增**：条件条窄屏收纳（≤767px 折叠成摘要行，桌面恒展开）；财报工作台与横截面表在用，`/compare` 勾选主交互区不用 |
 | `src/components/ui/TableScroll.vue` | **新增**：表格横滚右缘渐隐指示（is-scrollable / is-at-end），ResizeObserver 自适应内容宽度 |
-| `src/features/workbench/{Overview,Financials,Quality,Risk,Valuation}Workspace.vue` | 异动 Top6 区 / 条件条+深链 / 质量区挂载 / Beneish 首位+科目深挖 / 行业分位条 |
-| `src/features/workbench/ComparePage.vue` | **重写**：勾选渐进加载 + EC 预估可见 + `estimateCompareEc`/`ecPerCompany` |
+| `src/features/workbench/SampleGallery.vue` | **新增**：4 案例样板画廊；`selectSample` 强制年度口径走快照 0 EC |
+| `src/features/workbench/WorkbenchPage.vue` | 默认样板入口 + 配额横幅 + 顶栏来源状态；旧阅读提示已并入横幅 |
+| `src/components/ui/CompanyHeader.vue` | 私有 AppId + 快照时显示「拉取最新实时数据」，内联 EC 确认 |
+| `src/data/sourceLabel.ts` | **新增**：`sourceShortLabelOf` / `canPullLive` 纯函数 |
+| `src/data/provider.ts` | `servesBuiltinSnapshot(symbol, mode, forceLive)`；`FetchOptions.forceLive` |
+| `src/store/useApp.ts` | `selectSample`；`selectStock(..., forceLive)`；`sourceShortLabel`；切口径保持实时 |
+| `src/features/home/AboutPage.vue` | 三路开始 / 四个问题 / `#quota` 配额表；`?focus=quota` 滚动 |
+| `src/features/workbench/{Overview,Financials,Quality,Risk,Valuation}Workspace.vue` | 概览多指标 2×2 + 自选对比 + 同业分位图 / 条件条+深链 + 存货双轴 / 质量六维横向柱 / Beneish 首位+科目深挖 / 自身 vs 行业分位图 |
+| `src/components/ui/PeerPanels.vue` | 同业散点 X/Y 可换轴 + 横截面分位图 + 全行业表 |
+| `src/features/workbench/ComparePage.vue` | **重写**：勾选渐进加载 + EC 预估可见 + `estimateCompareEc`/`ecPerCompany`；加载后新增关键指标小倍数 |
+| `docs/CHART_DESIGN.md` | **新增**：图表审计、ChartSpec 语汇、图表目录、行业对比边界、验收 |
 | `docs/VALUE_DEPTH_PLAN.md` | 本次价值深度调研与分批方案（Batch1/2/3 划分基线） |
 | `docs/DESIGN_SPEC.md` | **v2.0 工作台规格（UI 唯一标尺）** |
 
@@ -163,7 +181,7 @@ EC 账：年度 5 年 ≈ 3 万（+card/members ≈ 3.6 万首刷）；季度 8 
 
 1. **三表 peer 对比扩展到申万 L3 全成分**：需 AppId 验证行业成分（21 家 × 3 万 ≈ 63 万 EC），动手前必问用户是否接受消耗与分批策略；现行 `/compare` 已支持手动勾选，无需改架构。
 2. **产销量 / 附注模块**：依赖年报原文域（当前三表 schema 无该字段），属数据源缺口非代码缺口，待 schema 扩展后挂载。
-3. **可选小项**：首页「热门公司」chips 已改 RouterLink（无需再做）；旧 `REVIEW_AND_PLAN.md`/`IMPLEMENTATION_PLAN.md` 描述旧 IA 可归档。
+3. **可选小项**：旧 `REVIEW_AND_PLAN.md`/`IMPLEMENTATION_PLAN.md` 描述旧 IA 可归档；首页已改为默认样板 + 样板画廊，`AboutPage` 承载三路/四问/配额。
 4. **远期**：BFF 共享缓存（官方站「打开即用」时再上）；更多行业镜头（引擎已通用，只差阈值表与样例）；版本号已 v1.1.0，下次重大发布再 bump。
 
 ## 第四部分 · 工作方式约定

@@ -1,8 +1,8 @@
 /* eslint-disable */
 // prism（原 report-lens）E2E（v1 工作台 IA）：
-//   首页（搜索/示例入口）→ /company/600519 概览（结论条/KPI/小倍数/Top 风险）→
+//   /#/ 直接落到默认样板报告（贵州茅台）→ 样板画廊/配额横幅 → 概览（结论条/KPI/小倍数/Top 风险）→
 //   财报（列组表 + 科目下钻 dialog + 子列切换）→ 质量（Altman/Piotroski/增长回报）→
-//   风险（四态 + 证据回链）→ 同业/估值（快照降级提示）→ 跟踪 → 移动端底部导航。
+//   风险（四态 + 证据回链）→ 同业/估值（快照降级提示）→ 跟踪 → /about → 移动端底部导航。
 // 三视口基线截图输出至 e2e-screenshots/ui-baseline/。
 // playwright-core 解析：优先项目 devDependency（CI 走 npm ci 装的稳定版），
 // 本地历史环境回退到 npx 缓存的绝对路径
@@ -27,6 +27,14 @@ function ok(name, cond, extra = '') {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  | ' + extra : ''}`);
 }
 
+// 防雷：应用内置体验密钥（demo）后，无凭证环境会自动变实时模式烧共享配额。
+// E2E/CI 必须保持快照路径——每个新页面注入标记，credentials 层见标记即跳过 demo。
+async function newPage(browser, viewport) {
+  const page = await browser.newPage({ viewport });
+  await page.addInitScript(() => localStorage.setItem('report-lens:disable-demo-credential', '1'));
+  return page;
+}
+
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -38,37 +46,51 @@ const VIEWPORTS = [
 
   try {
     // ═══ 主流程：desktop 视口 ═══
-    const page = await browser.newPage({ viewport: VIEWPORTS[0] });
+    const page = await newPage(browser, VIEWPORTS[0]);
     page.setDefaultTimeout(15000);
 
-    // ── 1. 首页：工作台入口（无营销 hero / 无卡片墙）──
+    // ── 1. 打开即样板报告（/#/ 重定向）+ 样板画廊 + 配额横幅 ──
     await page.goto(BASE + '/#/', { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForTimeout(1200);
-    ok('首页标题', (await page.title()).includes('财报透视'), await page.title());
-    ok('搜索框存在', (await page.locator('input[type=search]').count()) > 0);
-    ok('示例报告入口', (await page.locator('button:has-text("先看一份示例报告")').count()) > 0);
-    ok('三步用法说明', (await page.locator('text=① 选公司').count()) > 0);
-    ok('四个问题入口：利润是真的吗', (await page.locator('text=利润是真的吗').count()) > 0);
-    ok('热门公司 chips', (await page.locator('a:has-text("贵州茅台 600519")').count()) > 0);
-    await page.screenshot({ path: `${OUT}/01-home.png`, fullPage: true });
-
-    // ── 2. 示例报告 → 概览工作台 ──
-    await page.locator('button:has-text("先看一份示例报告")').click();
     await page.waitForSelector('.wb-company__name', { timeout: 20000 });
     await page.waitForTimeout(800);
-    ok('URL 为 /company/600519/overview', page.url().includes('/company/600519/overview'), page.url());
+    ok('URL 重定向到默认样板', page.url().includes('/company/600519/overview'), page.url());
     ok('公司名：贵州茅台', (await page.locator('.wb-company__name:has-text("贵州茅台")').count()) > 0);
     ok('来源标签：内置快照', (await page.locator('.wb-source:has-text("内置快照")').count()) > 0);
+    ok('样板画廊 4 个案例', (await page.locator('.wb-sample').count()) === 4);
+    ok('当前样板高亮', (await page.locator('.wb-sample.is-on:has-text("贵州茅台")').count()) > 0);
+    ok('演示样板有「演示」标记', (await page.locator('.wb-sample__demo').count()) === 1);
+    ok('配额横幅出现', (await page.locator('.wb-quota-banner').count()) > 0);
+    ok('顶栏来源状态：快照', (await page.locator('.wb-source-btn:has-text("快照")').count()) > 0);
+    ok('快照模式不显示私有实时按钮', (await page.getByRole('button', { name: '拉取最新实时数据' }).count()) === 0);
+    await page.screenshot({ path: `${OUT}/01-default-report.png`, fullPage: true });
+
+    // 样板切换：0 EC（强制年度口径走内置快照）
+    await page.locator('.wb-sample:has-text("演示·制造")').click();
+    await page.waitForTimeout(1200);
+    ok('样板切换：制造样例', (await page.locator('.wb-company__name:has-text("演示·制造")').count()) > 0);
+    ok('样板切换仍为内置快照', (await page.locator('.wb-source:has-text("内置快照")').count()) > 0);
+    await page.locator('.wb-sample:has-text("贵州茅台")').click();
+    await page.waitForTimeout(1200);
+    ok('切回茅台样板', (await page.locator('.wb-company__name:has-text("贵州茅台")').count()) > 0);
+
+    await page.locator('button:has-text("知道了")').click();
+    await page.waitForTimeout(300);
+    ok('配额横幅可关闭', (await page.locator('.wb-quota-banner').count()) === 0);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.wb-company__name', { timeout: 20000 });
+    await page.waitForTimeout(800);
+    ok('横幅关闭后刷新不再出现', (await page.locator('.wb-quota-banner').count()) === 0);
+
+    // ── 2. 概览工作台 ──
     const verdictText = (await page.locator('.wb-verdict__status').first().textContent().catch(() => '')) || '';
     ok('结论条四态判定', ['稳健', '需关注', '高风险', '数据不足'].includes(verdictText.trim()), `实际=${verdictText}`);
     ok('数据完整度（已核查计数）', (await page.locator('text=/项已核查/').count()) > 0);
     ok('五维 KPI：营收同比', (await page.locator('.wb-kpi__label:has-text("营收同比")').count()) > 0);
     ok('五维 KPI：PE 3 年分位', (await page.locator('.wb-kpi__label:has-text("PE 3 年分位")').count()) > 0);
-    ok('首访阅读提示（可关闭）', (await page.locator('text=这份报告怎么看').count()) > 0);
-    await page.locator('button:has-text("知道了")').click();
-    ok('阅读提示可关闭', (await page.locator('text=这份报告怎么看').count()) === 0);
     ok('核心趋势 2×2 小倍数', (await page.locator('.wb-mini-grid .wb-chart').count()) >= 4);
     ok('小倍数带参考线脚注', (await page.locator('.wb-chart__foot:has-text("参考线")').count()) > 0);
+    // 简化版原则（2026-10-22）：核心趋势为只读预设图，不再提供「自选对比」构建入口
+    ok('概览无自选图表构建入口', (await page.locator('button:has-text("自选对比")').count()) === 0);
     ok('Top 风险区', (await page.locator('h2:has-text("Top 风险")').count()) > 0);
     ok('快照下同业降级提示（不伪装数据）', (await page.locator('text=同业数据未取到').count()) > 0);
     // 异动信号：快速发现异常的入口
@@ -88,10 +110,11 @@ const VIEWPORTS = [
     ok('列组表头含「原值」', (await page.locator('th:has-text("原值")').count()) > 0);
     ok('列组表头含子列「同比」', (await page.locator('th.wb-th-sub:has-text("同比")').count()) > 0);
     ok('单位说明（亿元）', (await page.locator('text=单位：亿元').count()) > 0);
-    // 条件选项：异动阈值 + 只看跳变
+    // 条件选项：简化后只剩口径/窗口；阈值由行业模版预设，不再暴露配置
     ok('条件条存在', (await page.locator('.wb-filters').count()) > 0);
-    ok('异动阈值可选', (await page.locator('.wb-seg button:has-text("同比 30%")').count()) > 0);
-    ok('只看跳变开关存在', (await page.locator('.wb-toggle:has-text("只看跳变科目")').count()) > 0);
+    ok('异动阈值不再暴露配置（行业模版预设）', (await page.locator('.wb-seg button:has-text("同比 30%")').count()) === 0);
+    ok('只看跳变开关已移除', (await page.locator('.wb-toggle:has-text("只看跳变科目")').count()) === 0);
+    ok('阈值说明注明行业模版预设', (await page.locator('text=/行业模版预设/').count()) > 0);
     ok('异动图例说明颜色语义', (await page.locator('.wb-legend:has-text("上升")').count()) > 0);
 
     // 科目下钻：点「销售费用」行 → dialog
@@ -111,25 +134,35 @@ const VIEWPORTS = [
     await page.waitForTimeout(400);
     ok('ESC 关闭下钻', (await page.locator('[role="dialog"]').count()) === 0);
 
+    // 简化版原则：下钻弹窗不再提供「加入多指标对比」（无构建式入口）
+    await page.locator('tbody tr.is-clickable', { hasText: '销售费用' }).first().click();
+    await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
+    ok('下钻无「加入多指标对比」入口', (await page.getByRole('button', { name: '加入多指标对比' }).count()) === 0);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+
     // 子列切换：共同比
     await page.locator('.wb-seg button:has-text("共同比")').click();
     await page.waitForTimeout(300);
     ok('切换子列为共同比', (await page.locator('th.wb-th-sub:has-text("占比")').count()) > 0);
     ok('共同比口径说明出现', (await page.locator('text=营业总收入').count()) > 0);
-    // 只看跳变：过滤后仍有表头，且行数减少
-    const rowsAll = await page.locator('tbody tr').count();
-    await page.locator('.wb-toggle:has-text("只看跳变科目")').click();
-    await page.waitForTimeout(400);
-    const rowsFiltered = await page.locator('tbody tr').count();
-    ok('只看跳变过滤生效', rowsFiltered <= rowsAll, `${rowsAll} → ${rowsFiltered}`);
-    await page.locator('.wb-toggle:has-text("只看跳变科目")').click();
-    await page.waitForTimeout(300);
     // 注：不在 E2E 点「季度」——dev 环境 .env.local 带凭证时会真实触发实时取数（24 张表）花 EC；
     // 季度口径正确性由 quarter.test.ts 的「二次差分事故回归」单测钉死
-    // 科目深挖：默认收起，点开资产结构 / 存货 / 固定资产
+    // 科目深挖：三张表各自的科目，默认展开第一个
     ok('科目深挖入口', (await page.locator('text=科目深挖').count()) > 0);
-    await page.locator('.wb-seg button:has-text("资产结构")').click();
-    await page.waitForTimeout(500);
+    ok('利润表默认深挖：毛利率与费用', (await page.locator('.wb-seg button.is-on:has-text("毛利率与费用")').count()) > 0);
+    ok('利润表深挖内容', (await page.locator('h2:has-text("毛利率趋势与同业")').count()) > 0);
+    await page.locator('.wb-seg button:has-text("利润含金量")').click();
+    await page.waitForTimeout(400);
+    ok('利润含金量展开', (await page.locator('h2:has-text("净利润 vs 经营现金流")').count()) > 0);
+    await page.locator('.wb-seg button:has-text("ROE 杜邦")').click();
+    await page.waitForTimeout(400);
+    ok('ROE 杜邦展开', (await page.locator('h2:has-text("归母 ROE 趋势")').count()) > 0);
+
+    // 资产负债表：深挖科目不同，默认资产结构
+    await page.locator('.wb-seg button:has-text("资产负债表")').first().click();
+    await page.waitForTimeout(700);
+    ok('资产负债表默认深挖：资产结构', (await page.locator('.wb-seg button.is-on:has-text("资产结构")').count()) > 0);
     ok('深挖-资产结构展开', (await page.locator('h2:has-text("资产构成（共同比）")').count()) > 0);
     await page.locator('.wb-seg button:has-text("存货")').click();
     await page.waitForTimeout(500);
@@ -140,6 +173,18 @@ const VIEWPORTS = [
     await page.locator('.wb-seg button:has-text("固定资产")').click();
     await page.waitForTimeout(300);
     ok('深挖可再次收起', (await page.locator('h2:has-text("固定资产周转率")').count()) === 0);
+
+    // 现金流量表：默认现金流质量
+    await page.locator('.wb-seg button:has-text("现金流量表")').first().click();
+    await page.waitForTimeout(700);
+    ok('现金流量表默认深挖：现金流质量', (await page.locator('.wb-seg button.is-on:has-text("现金流质量")').count()) > 0);
+    ok('现金流质量内容', (await page.locator('h2:has-text("销售收现比（卖货收到的现金 / 营收）")').count()) > 0);
+    await page.locator('.wb-seg button:has-text("现金转换周期")').click();
+    await page.waitForTimeout(500);
+    ok('现金转换周期展开', (await page.locator('h2:has-text("现金转换周期（CCC）趋势")').count()) > 0);
+    await page.locator('.wb-seg button:has-text("现金流八型")').click();
+    await page.waitForTimeout(500);
+    ok('现金流八型展开', (await page.locator('h2:has-text("逐年现金流类型（老唐八型）")').count()) > 0);
     await page.screenshot({ path: `${OUT}/04-financials.png`, fullPage: true });
 
     // ── 4. 质量：模型三块 ──
@@ -185,14 +230,12 @@ const VIEWPORTS = [
     ok('证据回链：在财报中查看', (await page.locator('a:has-text("在财报中查看")').count()) > 0);
     await page.screenshot({ path: `${OUT}/06-risk.png`, fullPage: true });
 
-    // ── 6. 同业 / 估值：快照降级 ──
-    await page.locator('.wb-nav a:has-text("同业")').click();
-    await page.waitForTimeout(500);
-    ok('同业快照降级提示', (await page.locator('text=同业数据未取到').count()) > 0);
+    // ── 6. 估值：快照降级（同业导航已移除，同业内容收进估值页与概览迷你表）──
     await page.locator('.wb-nav a:has-text("估值")').click();
     await page.waitForTimeout(500);
     ok('估值快照降级提示', (await page.locator('text=示例快照没有实时估值').count()) > 0);
     ok('估值不越界声明', (await page.locator('text=估值只回答').count()) > 0);
+    ok('同业导航已移除（聚焦单公司）', (await page.locator('.wb-nav a:has-text("同业")').count()) === 0);
 
     // ── 7. 跟踪 ──
     await page.locator('.wb-nav a:has-text("跟踪")').click();
@@ -232,6 +275,10 @@ const VIEWPORTS = [
     ok('横截面表有排名列', (await page.locator('th:has-text("本公司排名")').count()) > 0);
     ok('横截面表有偏离中位数列', (await page.locator('th:has-text("偏离中位数")').count()) > 0);
     ok('对齐共同年', (await page.locator('text=/对齐期间 \\d{4}/').count()) > 0);
+    // 关键指标对照：只用已加载的同行三表，0 额外 EC
+    ok('关键指标对照区', (await page.locator('h3:has-text("关键指标对照")').count()) > 0);
+    ok('关键指标对照出图（≥4 张）', (await page.locator('.wb-mini-grid .wb-chart').count()) >= 4);
+    ok('关键指标对照标注本公司高亮/中位数', (await page.locator('text=/本公司高亮 · 灰色虚线为中位数/').count()) > 0);
     const peerRowsAll = await page.locator('.wb-table--peer tbody tr').count();
     await page.locator('.wb-toggle:has-text("只看偏离项")').click();
     await page.waitForTimeout(400);
@@ -242,10 +289,29 @@ const VIEWPORTS = [
     ok('按偏离排序可切换', (await page.locator('.wb-table--peer tbody tr').count()) > 0);
     await page.screenshot({ path: `${OUT}/09-compare.png`, fullPage: true });
 
+    // ── 7.6 /about：怎么开始 / 四个问题 / 配额区 ──
+    await page.goto(BASE + '/#/about', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(600);
+    ok('关于页标题', (await page.locator('h1:has-text("关于「财报透视」")').count()) > 0);
+    ok('怎么开始三路', (await page.locator('h2:has-text("怎么开始")').count()) > 0);
+    ok('四个问题区', (await page.locator('.wb-home__question').count()) === 4);
+    ok('配额与数据源区', (await page.locator('#quota').count()) > 0);
+    ok('关于页返回报告', (await page.getByRole('link', { name: '返回报告' }).count()) > 0);
+    await page.screenshot({ path: `${OUT}/10-about.png`, fullPage: true });
+    await page.goto(BASE + '/#/about?focus=quota', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(700);
+    const quotaInView = await page.evaluate(() => {
+      const el = document.getElementById('quota');
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.top >= 0 && rect.top < window.innerHeight;
+    });
+    ok('配额区锚点自动滚动', quotaInView);
+
     await page.close();
 
     // ── 8. 移动端 375px：底部导航 + 结论置顶 ──
-    const mobile = await browser.newPage({ viewport: VIEWPORTS[2] });
+    const mobile = await newPage(browser, VIEWPORTS[2]);
     mobile.setDefaultTimeout(15000);
     await mobile.goto(`${BASE}/#/company/600519/overview`, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await mobile.waitForSelector('.wb-verdict__status', { timeout: 20000 });
@@ -283,7 +349,7 @@ const VIEWPORTS = [
 
     // ── 8.5 数据校验零噪声：真实数据不得把「请核对口径」类提示甩给用户 ──
     // 泸州老窖 2021 少数股东损益为负（净利<归母）、长期待摊费用连续五年 71–176 万，均为真实数据
-    const lzlj = await browser.newPage({ viewport: VIEWPORTS[0] });
+    const lzlj = await newPage(browser, VIEWPORTS[0]);
     lzlj.setDefaultTimeout(15000);
     await lzlj.goto(`${BASE}/#/company/000568/overview`, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await lzlj.waitForSelector('.wb-company__name', { timeout: 20000 });
@@ -294,14 +360,14 @@ const VIEWPORTS = [
     );
     await lzlj.close();
 
-    // ═══ 三视口基线截图（home / overview / financials）═══
+    // ═══ 三视口基线截图（about / overview / financials）═══
     for (const vp of VIEWPORTS) {
       for (const [name, hash] of [
-        ['home', '/#/'],
+        ['about', '/#/about'],
         ['overview', '/#/company/600519/overview'],
         ['financials', '/#/company/600519/financials'],
       ]) {
-        const p = await browser.newPage({ viewport: vp });
+        const p = await newPage(browser, vp);
         p.setDefaultTimeout(15000);
         await p.goto(BASE + hash, { waitUntil: 'domcontentloaded', timeout: 20000 });
         await p.waitForTimeout(1600);
@@ -311,7 +377,9 @@ const VIEWPORTS = [
     }
     ok(
       '三视口基线截图已生成',
-      fs.existsSync(`${BASELINE}/overview-mobile.png`) && fs.existsSync(`${BASELINE}/financials-desktop.png`),
+      fs.existsSync(`${BASELINE}/about-desktop.png`) &&
+        fs.existsSync(`${BASELINE}/overview-mobile.png`) &&
+        fs.existsSync(`${BASELINE}/financials-desktop.png`),
     );
   } catch (e) {
     results.push({ name: 'EXCEPTION', pass: false, extra: String(e).slice(0, 300) });

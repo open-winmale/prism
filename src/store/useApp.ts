@@ -8,6 +8,7 @@ import type { CompanyCard, IndustryMembersPayload } from '@/data/wm/types';
 import { clearCredentials, loadCredentials, saveCredentials } from '@/data/wm/credentials';
 import { clearTokenCache } from '@/data/wm/auth';
 import type { FetchProgress } from '@/data/wm/dataset';
+import { sourceShortLabelOf } from '@/data/sourceLabel';
 
 const proUrl = import.meta.env.VITE_PRO_URL || 'https://winmale.com';
 // 引流归因：开源版所有指向专业版的 CTA 统一带 utm_source
@@ -91,15 +92,21 @@ export const useAppStore = defineStore('app', () => {
     issues: [],
   });
 
-  /** 报告头展示用：来源按 dataset 实际来源判断，而不是按 provider 判断。 */
+  /** 报告头展示用：来源按 dataset 实际来源判断，而不是按 provider 判断。
+   *  体验密钥（demo）明确标注共享额度属性，与自有密钥的实时取数区分开。 */
   const sourceLabel = computed(() => {
     const info = fetchInfo.value;
     if (info.kind === 'snapshot') return '内置快照 · 0 EC';
     if (info.kind === 'live') {
-      return info.cached ? '接口取数 · 本地缓存 · 0 EC' : `接口取数 · ${info.ecCost.toLocaleString()} EC`;
+      const name = credential.value.source === 'demo' ? '体验密钥' : '接口取数';
+      return info.cached ? `${name} · 本地缓存 · 0 EC` : `${name} · ${info.ecCost.toLocaleString()} EC`;
     }
     return '未取数';
   });
+  /** 顶栏短状态：快照 / 体验密钥 / 私有 AppId / 部署凭证 / 实时 / 未连接 */
+  const sourceShortLabel = computed(() =>
+    sourceShortLabelOf(fetchInfo.value.kind, credential.value.source),
+  );
   /** 取数进度（15 张表，给骨架屏用） */
   const progress = ref<FetchProgress | null>(null);
 
@@ -157,7 +164,12 @@ export const useAppStore = defineStore('app', () => {
   /** 年度窗口年数（5/10）；季度口径固定 8 个报告期 */
   const fetchYears = ref<number>(5);
 
-  async function selectStock(symbol: string, mode?: 'annual' | 'quarterly', years?: number) {
+  async function selectStock(
+    symbol: string,
+    mode?: 'annual' | 'quarterly',
+    years?: number,
+    forceLive = false,
+  ) {
     const seq = ++selectSeq;
     if (mode && mode !== dataMode.value) dataMode.value = mode;
     if (years && years !== fetchYears.value) fetchYears.value = years;
@@ -172,6 +184,7 @@ export const useAppStore = defineStore('app', () => {
       const res = await providerInstance.getDataset(symbol, {
         mode: dataMode.value,
         years: dataMode.value === 'quarterly' ? 8 : fetchYears.value,
+        forceLive,
         onProgress: (p) => {
           if (seq === selectSeq) progress.value = p;
         },
@@ -202,13 +215,19 @@ export const useAppStore = defineStore('app', () => {
   /** 切换年度/季度口径（保留当前标的重新取数，命中不同缓存） */
   function switchMode(mode: 'annual' | 'quarterly') {
     if (mode === dataMode.value || !currentSymbol.value) return;
-    void selectStock(currentSymbol.value, mode);
+    // 当前若是强制实时拉取的样本，切换口径时继续保持实时，避免掉回快照。
+    void selectStock(currentSymbol.value, mode, undefined, fetchInfo.value.kind === 'live');
   }
 
   /** 切换年度窗口（5/10 年；实时模式 10 年约多花 3 万 EC，由 UI 预估提示） */
   function switchYears(years: number) {
     if (years === fetchYears.value || !currentSymbol.value) return;
-    void selectStock(currentSymbol.value, dataMode.value, years);
+    void selectStock(currentSymbol.value, dataMode.value, years, fetchInfo.value.kind === 'live');
+  }
+
+  /** 样板画廊：强制年度口径，内置样本走快照 0 EC，避免季度模式误触发实时取数 */
+  async function selectSample(symbol: string) {
+    await selectStock(symbol, 'annual', fetchYears.value);
   }
 
   // ── 三表逐行横截面（/compare 渐进加载） ──
@@ -305,6 +324,7 @@ export const useAppStore = defineStore('app', () => {
     peers,
     fetchInfo,
     sourceLabel,
+    sourceShortLabel,
     progress,
     industry,
     loading,
@@ -315,6 +335,7 @@ export const useAppStore = defineStore('app', () => {
     loadExtraSamples,
     extraSymbols,
     selectStock,
+    selectSample,
     searchSymbols,
     searchResults,
     searching,

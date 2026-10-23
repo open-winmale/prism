@@ -107,11 +107,13 @@ export function runQualityCheck(ctx: AnalysisContext): AnalysisResult {
   const isLiquor = ctx.industry === 'liquor';
 
   const barChart: ChartSpec = {
-    type: 'bar',
+    type: 'horizontalBar',
     title: isLiquor ? '质量六维子分' : '质量七维子分',
     unit: '分',
     categories: q.subs.map((s) => s.cn),
     series: [{ name: '子分(0-100)', data: q.subs.map((s) => s.score) }],
+    refLines: [{ value: 100, label: '满分 100', axis: 'x', kind: 'threshold' }],
+    note: '横向柱让短板一眼可见；100 分门线右侧仍有缺口就是可改进处。',
   };
 
   const tableChart: ChartSpec = {

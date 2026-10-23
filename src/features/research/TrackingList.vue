@@ -107,7 +107,7 @@ function pct(value: number | null | undefined, digits = 1): string {
 </script>
 
 <template>
-  <section class="wb-section">
+  <section id="sec-tracking" class="wb-section scroll-mt">
     <div class="wb-section__head">
       <div>
         <h2 class="wb-section__title">跟踪清单</h2>

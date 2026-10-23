@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import { peerKeyMetrics, peerMetricCharts } from '@/engine';
 import { useAppStore } from '@/store/useApp';
 import AppTopbar from '@/components/ui/AppTopbar.vue';
+import ChartFrame from '@/components/ui/ChartFrame.vue';
 import PeerPanels from '@/components/ui/PeerPanels.vue';
 import PeerStatementTable from '@/components/ui/PeerStatementTable.vue';
 import SymbolSearch from '@/components/SymbolSearch.vue';
@@ -56,6 +58,13 @@ const loadedOthers = computed(() =>
 const pendingCount = computed(() => selected.value.filter((s) => !store.compareTargets[s]).length);
 const ecEstimate = computed(() => store.estimateCompareEc(selected.value));
 const isSnapshot = computed(() => store.dataSource !== 'live');
+
+/** 关键经营指标对照：只消费用户已加载的同行三表，0 额外 EC */
+const keyMetrics = computed(() => {
+  if (!store.dataset || !loadedOthers.value.length) return null;
+  return peerKeyMetrics(store.dataset, loadedOthers.value);
+});
+const keyCharts = computed(() => (keyMetrics.value ? peerMetricCharts(keyMetrics.value) : []));
 
 function toggle(symbol: string) {
   if (selected.value.includes(symbol)) {
@@ -193,6 +202,36 @@ onMounted(() => {
             正在取 {{ nameOf(store.compareLoading) }} 的三表…
           </div>
           <p v-if="store.compareError" class="wb-callout is-warn mb-3">{{ store.compareError }}</p>
+
+          <!-- 关键指标对照：期间对齐后的横向柱，本公司高亮 + 中位数线 -->
+          <div v-if="keyCharts.length" class="mb-5">
+            <div class="wb-section__head" style="margin-bottom: 8px">
+              <div>
+                <h3 class="wb-section__title" style="font-size: 13px">关键指标对照</h3>
+                <div class="wb-section__sub">
+                  {{
+                    keyMetrics?.aligned
+                      ? `期间对齐 ${keyMetrics.alignedYear}`
+                      : '未对齐（各公司最新年报，结论要打折）'
+                  }}
+                  · 本公司高亮 · 灰色虚线为中位数 · n={{ keyMetrics?.companies.length }}
+                </div>
+              </div>
+            </div>
+            <div class="wb-mini-grid">
+              <ChartFrame
+                v-for="(spec, index) in keyCharts"
+                :key="index"
+                :spec="spec"
+                source="三表 · 派生"
+                :height="160"
+                :downloadable="false"
+              />
+            </div>
+            <p v-if="keyMetrics && !keyMetrics.aligned && keyMetrics.warnings.length" class="wb-callout is-warn mt-2">
+              {{ keyMetrics.warnings.join('；') }}
+            </p>
+          </div>
 
           <div v-if="selected.length === 0" class="wb-callout">
             勾选上方公司开始对比。默认不勾选——横截面是深水区，不该默认替你花 EC。

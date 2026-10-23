@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { AnalysisContext } from '@/engine';
+import { canPullLive } from '@/data/sourceLabel';
 import { useAppStore } from '@/store/useApp';
 import SourceBadge from './SourceBadge.vue';
 
@@ -30,6 +31,16 @@ const chgClass = computed(() => {
   return pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : '';
 });
 
+/** 只有私有 AppId + 当前是快照时，才允许显式拉实时（体验密钥不烧共享额度） */
+const canLive = computed(() => canPullLive(store.fetchInfo.kind, store.credential.source));
+const confirming = ref(false);
+const ecEstimate = computed(() => store.ecPerCompany().toLocaleString());
+
+function pullLive(): void {
+  confirming.value = false;
+  void store.selectStock(props.ctx.dataset.symbol, store.dataMode, store.fetchYears, true);
+}
+
 function num(value: number | null | undefined, digits = 1): string {
   return value == null || !Number.isFinite(value) ? '—' : value.toFixed(digits);
 }
@@ -39,35 +50,51 @@ function pct(value: number | null | undefined, digits = 1): string {
 </script>
 
 <template>
-  <div class="wb-company">
-    <div>
-      <div class="wb-company__name">
-        <span>{{ ctx.dataset.name }}</span>
-        <span class="wb-company__code">{{ ctx.dataset.symbol }}</span>
+  <div class="wb-company-wrap">
+    <div class="wb-company">
+      <div>
+        <div class="wb-company__name">
+          <span>{{ ctx.dataset.name }}</span>
+          <span class="wb-company__code">{{ ctx.dataset.symbol }}</span>
+        </div>
+        <div class="wb-company__meta">
+          <span>{{ industry }}</span>
+          <span>·</span>
+          <span>{{ period }}</span>
+          <span>·</span>
+          <span>审计：{{ audit }}</span>
+          <span>·</span>
+          <SourceBadge :label="store.sourceLabel" :kind="sourceKind" />
+        </div>
       </div>
-      <div class="wb-company__meta">
-        <span>{{ industry }}</span>
-        <span>·</span>
-        <span>{{ period }}</span>
-        <span>·</span>
-        <span>审计：{{ audit }}</span>
-        <span>·</span>
-        <SourceBadge :label="store.sourceLabel" :kind="sourceKind" />
+      <div class="wb-company__quote">
+        <div v-if="store.card">
+          <span class="wb-company__price">{{ num(store.card.close, 2) }}</span>
+          <span class="wb-company__chg" :class="chgClass">{{ pct(store.card.percent, 2) }}</span>
+        </div>
+        <div v-else class="wb-note">示例快照 · 无实时行情</div>
+        <div v-if="store.card" class="wb-company__valuation">
+          <span>PE(TTM) {{ num(store.card.pe_ttm, 1) }}x</span>
+          <span>PB {{ num(store.card.pb_ttm, 2) }}x</span>
+          <span>ROE {{ pct(store.card.roe_ttm) }}</span>
+          <span>PE 3Y {{ pct(store.card.pct_pe_3y, 0) }}</span>
+          <span>股息 {{ pct(store.card.bonus_rate_ttm, 2) }}</span>
+          <span>截至 {{ asOf }}</span>
+        </div>
+        <div v-if="canLive" class="mt-2">
+          <button type="button" class="wb-btn" @click="confirming = true">拉取最新实时数据</button>
+        </div>
       </div>
     </div>
-    <div class="wb-company__quote">
-      <div v-if="store.card">
-        <span class="wb-company__price">{{ num(store.card.close, 2) }}</span>
-        <span class="wb-company__chg" :class="chgClass">{{ pct(store.card.percent, 2) }}</span>
-      </div>
-      <div v-else class="wb-note">示例快照 · 无实时行情</div>
-      <div v-if="store.card" class="wb-company__valuation">
-        <span>PE(TTM) {{ num(store.card.pe_ttm, 1) }}x</span>
-        <span>PB {{ num(store.card.pb_ttm, 2) }}x</span>
-        <span>ROE {{ pct(store.card.roe_ttm) }}</span>
-        <span>PE 3Y {{ pct(store.card.pct_pe_3y, 0) }}</span>
-        <span>股息 {{ pct(store.card.bonus_rate_ttm, 2) }}</span>
-        <span>截至 {{ asOf }}</span>
+
+    <div v-if="confirming" class="wb-callout is-warn mt-2">
+      <p class="m-0">
+        即将用你的私有 AppId 拉取 {{ ctx.dataset.symbol }} 的 {{ store.fetchYears }} 年三表，预计约
+        <b>{{ ecEstimate }} EC</b>（24h 缓存命中则 0 EC）。
+      </p>
+      <div class="mt-2 flex gap-2">
+        <button type="button" class="wb-btn wb-btn--primary" @click="pullLive">确认拉取</button>
+        <button type="button" class="wb-btn" @click="confirming = false">取消</button>
       </div>
     </div>
   </div>

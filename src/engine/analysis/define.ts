@@ -8,6 +8,7 @@ export type Severity = 'high' | 'mid' | 'low' | 'info';
 export type ChartType =
   | 'line'
   | 'bar'
+  | 'horizontalBar'
   | 'pie'
   | 'scatter'
   | 'stackedBar'
@@ -16,11 +17,15 @@ export type ChartType =
   | 'heatmap'
   | 'table';
 
-/** 参考线：yAxis（默认）或 xAxis 位置画虚线，如「CFO/NP=100%」「行业中位数」 */
+/**
+ * 参考线：yAxis（默认）或 xAxis 位置画虚线。
+ * kind 决定语义色：threshold=门线（琥珀）、median=中位数/基准（灰）、zero=零线（浅灰）。
+ */
 export interface ChartRefLine {
   value: number;
   label?: string;
   axis?: 'x' | 'y';
+  kind?: 'threshold' | 'median' | 'zero';
 }
 
 /** 散点：同业横截面（ROE vs PE 等）；highlight=true 的点单独成系列高亮 */
@@ -40,6 +45,14 @@ export interface ChartSeries {
   as?: 'bar' | 'line';
   /** 该系列画在右轴；存在即启用双轴 */
   axis?: 'left' | 'right';
+  /** 序列色覆盖；缺省走品牌色板 */
+  color?: string;
+  /** 虚线（基准/参考序列） */
+  dashed?: boolean;
+  /** 基准序列（同业基准/自身均值）：灰虚线，面积填充关闭 */
+  benchmark?: boolean;
+  /** 该序列的展示单位（双轴时与另一轴不同，例如 % / 天） */
+  unit?: string;
 }
 
 /** 瀑布条目：isTotal 标记首尾的总数柱（整根落地），其余为增量柱（按正负悬浮） */
@@ -61,11 +74,23 @@ export interface HeatmapData {
   unit?: string;
 }
 
+/** 左/右轴的数值格式：percent 表示数据已 ×100；ratio 保留 2 位小数 */
+export type ChartValueFormat = 'number' | 'percent' | 'ratio';
+
 export interface ChartSpec {
   type: ChartType;
   title?: string;
   unit?: string;
+  /** 脚注补充（口径、样本数、缺失说明）；ChartFrame 会如实渲染 */
   note?: string;
+  /** 左轴格式；缺省按 unit 推断（unit='%' → percent） */
+  yFormat?: ChartValueFormat;
+  /** 右轴格式；存在右轴时用 */
+  yFormatRight?: ChartValueFormat;
+  /** 柱状图高亮某个分类（如「本公司」）；其余柱走弱化色 */
+  highlightIndex?: number;
+  /** 是否显示图例；缺省多序列才显示 */
+  legend?: boolean;
   // 折线 / 柱状 / 组合
   categories?: string[];
   series?: ChartSeries[];

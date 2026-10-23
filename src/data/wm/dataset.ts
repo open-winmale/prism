@@ -33,6 +33,8 @@ export interface FetchOptions {
   concurrency?: number;
   signal?: AbortSignal;
   onProgress?: (p: FetchProgress) => void;
+  /** 内置样本也强制走接口（私有 AppId 的「拉取最新实时数据」）；默认 false = 年度口径走快照 */
+  forceLive?: boolean;
 }
 
 export interface FetchOutcome {

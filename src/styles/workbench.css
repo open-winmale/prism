@@ -110,6 +110,12 @@ body {
   padding: 18px 12px 24px;
   background: rgb(var(--wb-surface));
   min-height: calc(100vh - 56px);
+  /* 长页面关键：导航固定在视口内，随时可切换模块（不随页面滚走） */
+  position: sticky;
+  top: 56px; /* 顶栏 sticky 高度，导航从顶栏下方开始钉住 */
+  align-self: start;
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
 }
 
 .wb-main {
@@ -181,6 +187,43 @@ body {
   display: none;
 }
 
+/* 移动端模块导航：横向 chip 条（研究台版） */
+.wb-mobile-nav--chips {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .wb-mobile-nav--chips {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 12px;
+    background: rgb(var(--wb-surface));
+    border-bottom: 1px solid rgb(var(--wb-line));
+    position: sticky;
+    top: 56px;
+    z-index: 30;
+  }
+
+  .wb-mobile-nav--chips button {
+    flex: none;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgb(var(--wb-line-strong));
+    border-radius: 14px;
+    font-size: 12px;
+    color: rgb(var(--wb-slate));
+    background: rgb(var(--wb-surface));
+  }
+
+  .wb-mobile-nav--chips button.is-active {
+    border-color: rgb(var(--wb-brand));
+    color: rgb(var(--wb-brand));
+    background: rgb(var(--wb-brand-soft));
+    font-weight: 600;
+  }
+}
+
 /* ── Buttons / inputs ───────────────────────────────────────── */
 .wb-btn {
   display: inline-flex;
@@ -195,6 +238,7 @@ body {
   color: rgb(var(--wb-slate));
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
@@ -235,6 +279,7 @@ body {
   background: rgb(var(--wb-surface));
   color: rgb(var(--wb-slate));
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -469,11 +514,75 @@ body {
 }
 
 .wb-kpi__label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgb(var(--wb-muted));
+}
+
+/* 口径公式 tooltip：悬浮/聚焦出现，证据链追溯到公式与取数表 */
+.wb-kpi__q {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 400;
+  cursor: help;
+}
+
+.wb-kpi__formula {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: none;
+  width: 240px;
+  padding: 8px 10px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 6px;
+  background: rgb(var(--wb-surface));
+  box-shadow: 0 6px 18px rgb(15 23 42 / 0.12);
+  font-size: 11px;
+  line-height: 17px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-kpi__formula code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.wb-kpi__copy {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 4px;
+  background: rgb(var(--wb-surface-soft));
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.wb-kpi__copy:hover {
+  border-color: rgb(var(--wb-brand));
+  color: rgb(var(--wb-brand));
+}
+
+.wb-kpi__label:hover .wb-kpi__formula,
+.wb-kpi__label:focus-within .wb-kpi__formula {
+  display: block;
 }
 
 .wb-kpi__value {
@@ -519,6 +628,7 @@ body {
 
 .wb-section__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
@@ -609,7 +719,147 @@ body {
   background: rgb(var(--wb-brand));
 }
 
-/* ── ChartFrame ─────────────────────────────────────────────── */
+/* ── 样板画廊 ─────────────────────────────────────────────── */
+.wb-samples {
+  margin: 10px 0 4px;
+}
+
+.wb-samples__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.wb-samples__title {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-samples__title .wb-note {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.wb-samples__more {
+  font-size: 10px;
+  color: rgb(var(--wb-brand));
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wb-samples__track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 1px 1px 3px;
+  scrollbar-width: none;
+}
+
+.wb-samples__track::-webkit-scrollbar {
+  display: none;
+}
+
+.wb-sample {
+  flex: 0 0 auto;
+  min-width: 148px;
+  max-width: 210px;
+  padding: 7px 10px;
+  border: 1px solid rgb(var(--wb-line));
+  border-radius: 4px;
+  background: rgb(var(--wb-surface));
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.wb-sample:hover {
+  border-color: rgb(var(--wb-brand));
+}
+
+.wb-sample.is-on {
+  border-color: rgb(var(--wb-brand));
+  background: rgb(var(--wb-brand-soft));
+}
+
+.wb-sample__name {
+  display: block;
+  overflow: hidden;
+  color: rgb(var(--wb-ink));
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-sample__tag {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: rgb(var(--wb-muted));
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-sample__demo {
+  margin-right: 3px;
+  color: rgb(var(--wb-watch));
+  font-weight: 600;
+}
+
+/* ── 配额横幅 / 来源状态 ───────────────────────────────────── */
+.wb-quota-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 7px 10px;
+  border: 1px solid rgb(var(--wb-line));
+  border-left: 3px solid rgb(var(--wb-brand));
+  border-radius: 4px;
+  background: rgb(var(--wb-surface-soft));
+  color: rgb(var(--wb-slate));
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.wb-quota-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.wb-quota-banner__link {
+  color: rgb(var(--wb-brand));
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wb-source-btn {
+  gap: 6px;
+}
+
+.wb-source-btn__state {
+  color: rgb(var(--wb-brand));
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .wb-source-btn__label {
+    display: none;
+  }
+
+  .wb-samples__title .wb-note:last-child {
+    display: none;
+  }
+}
+
+/* 图表卡 */
 .wb-chart {
   margin: 0;
   min-width: 0;
@@ -869,18 +1119,15 @@ body {
 .wb-risk__head {
   width: 100%;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
   padding: 10px 4px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
 }
 
-.wb-risk__head:hover {
-  background: rgb(var(--wb-surface-soft));
+/* 拍平后 body 恒显示（2026-10-23：两层交互原则，风险项 why/next 不再折叠） */
+.wb-risk__body {
+  padding: 0 4px 10px 36px;
 }
 
 .wb-risk__icon {
@@ -1367,6 +1614,267 @@ body {
   background: rgb(var(--wb-brand));
 }
 
+/* 指标对比工具条：两行（指标 chips / 模式 + 图形） */
+.wb-metric-compare__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.wb-metric-compare__bar--sub {
+  margin-top: -2px;
+}
+
+/* 已选指标 chips：点击即移除；圆点与图表序列色一致 */
+.wb-metric-compare__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wb-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgb(var(--wb-brand));
+  border-radius: 4px;
+  background: rgb(var(--wb-brand-soft));
+  color: rgb(var(--wb-brand));
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wb-metric-chip__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.wb-metric-chip span {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-metric-chip__dot {
+  font-size: 0;
+}
+
+/* 三表科目选择器：搜索 + 快捷组合 + 两列行式列表 */
+.wb-metric-picker {
+  margin: 0 0 10px;
+  border: 1px solid rgb(var(--wb-line));
+  border-radius: 6px;
+  background: rgb(var(--wb-surface-soft));
+}
+
+.wb-metric-picker__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgb(var(--wb-line));
+}
+
+.wb-metric-search {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 4px;
+  background: #fff;
+  color: rgb(var(--wb-ink));
+  font-size: 12px;
+}
+
+.wb-metric-search:focus {
+  border-color: rgb(var(--wb-brand));
+  outline: none;
+}
+
+.wb-metric-picker__count {
+  color: rgb(var(--wb-muted));
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wb-metric-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgb(var(--wb-line));
+}
+
+.wb-metric-preset {
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 3px;
+  background: #fff;
+  color: rgb(var(--wb-slate));
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.wb-metric-preset:hover {
+  border-color: rgb(var(--wb-brand));
+  color: rgb(var(--wb-brand));
+}
+
+.wb-metric-picker__body {
+  max-height: 300px;
+  overflow: auto;
+  padding: 8px 10px 10px;
+}
+
+.wb-metric-group + .wb-metric-group {
+  margin-top: 10px;
+}
+
+.wb-metric-group__title {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--wb-slate));
+}
+
+.wb-metric-group__title span {
+  color: rgb(var(--wb-muted));
+  font-weight: 400;
+}
+
+.wb-metric-group__items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+}
+
+.wb-metric-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgb(var(--wb-line));
+  border-radius: 3px;
+  background: #fff;
+  color: rgb(var(--wb-slate));
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-metric-option:hover:not(:disabled) {
+  border-color: rgb(var(--wb-brand));
+}
+
+.wb-metric-option__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 50%;
+  background: transparent;
+}
+
+.wb-metric-option__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-metric-option__unit {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-metric-option__empty {
+  flex: 0 0 auto;
+  font-size: 9px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-metric-option.is-section .wb-metric-option__name {
+  font-weight: 600;
+}
+
+.wb-metric-option.is-on {
+  border-color: rgb(var(--wb-brand));
+  background: rgb(var(--wb-brand-soft));
+  color: rgb(var(--wb-brand));
+  font-weight: 600;
+}
+
+.wb-metric-option.is-on .wb-metric-option__dot {
+  border-color: transparent;
+}
+
+.wb-metric-option.is-empty {
+  opacity: 0.45;
+}
+
+.wb-metric-option:disabled {
+  cursor: not-allowed;
+}
+
+.wb-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wb-seg button:disabled {
+  color: rgb(var(--wb-muted));
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .wb-metric-group__items {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 同业散点的 X/Y 轴选择器 */
+.wb-peer-axes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+}
+
+.wb-peer-axis {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgb(var(--wb-muted));
+}
+
+.wb-select {
+  height: 26px;
+  padding: 0 22px 0 6px;
+  border: 1px solid rgb(var(--wb-line-strong));
+  border-radius: 4px;
+  background: rgb(var(--wb-surface));
+  color: rgb(var(--wb-slate));
+  font-size: 11px;
+}
+
 /* 异动信号卡：概览区 Top 异动，点进财报下钻 */
 .wb-anomaly {
   display: flex;
@@ -1658,4 +2166,22 @@ body {
   .wb-table td {
     padding: 5px 6px;
   }
+}
+
+/* 锚点跳转偏移：给 sticky 顶栏留出空间 */
+.scroll-mt {
+  scroll-margin-top: 72px;
+}
+
+/* 异动证据链展开区 */
+.wb-evidence {
+  padding: 12px;
+  border: 1px solid rgb(var(--wb-line));
+  border-radius: 6px;
+  background: rgb(var(--wb-surface-soft));
+}
+
+.wb-anomaly__item.is-on {
+  border-color: rgb(var(--wb-brand));
+  box-shadow: 0 0 0 1px rgb(var(--wb-brand) / 0.35);
 }

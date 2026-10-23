@@ -9,6 +9,7 @@ export const dataset: ReportDataset = {
   "meta": {
     "fragrance": "浓香",
     "priceBand": "高端·中端双线",
+    "galleryTag": "消费白马 · 增长质量",
     "sourceNote": "数据源：赢麻了开放平台（wm-statements 同源），合并报表年度报（经审计）2021–2025；单位：元"
   },
   "periods": [

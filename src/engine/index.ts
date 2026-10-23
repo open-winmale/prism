@@ -4,6 +4,7 @@
 
 export * from './schema/types';
 export * from './schema/industry';
+export * from './schema/problems';
 export * from './schema/verify';
 export * from './compute';
 export * from './derivations';
@@ -36,6 +37,7 @@ export type { GrowthSources, GrowthDelta } from './analysis/growthSources';
 export { runBeneish, beneishOf, BENEISH_WATCH, BENEISH_HIGH, BENEISH_BASELINE } from './analysis/beneish';
 export type { BeneishScore, BeneishFactor, BeneishKey } from './analysis/beneish';
 export * from './methods/columns';
+export * from './methods/compare';
 export * from './methods/peerStatements';
 export { dossierOf } from './analysis/itemSemantics';
 export type { ItemDossier } from './analysis/itemSemantics';

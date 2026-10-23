@@ -2,7 +2,7 @@ import type { AnalysisContext, AnalysisModule, AnalysisResult, InsightBlock } fr
 import { LAOTANG_DUPONT_NOTE } from '../laotang/rules';
 import { periodLabel } from '../utils';
 import { compareBars } from '../methods/horizontal';
-import { trendLine } from '../methods/trend';
+import { trendLine, type TrendSeries } from '../methods/trend';
 
 export function runRoe(ctx: AnalysisContext): AnalysisResult {
   const labels = ctx.computed.periods.map(periodLabel);
@@ -15,9 +15,9 @@ export function runRoe(ctx: AnalysisContext): AnalysisResult {
   const blocks: InsightBlock[] = [];
 
   // ROE 趋势 + 同业
-  const roeSeries = [{ name: `${ctx.dataset.name} ROE`, values: roe.map((v) => (v == null ? null : v * 100)) }];
+  const roeSeries: TrendSeries[] = [{ name: `${ctx.dataset.name} ROE`, values: roe.map((v) => (v == null ? null : v * 100)) }];
   if (ctx.peerBench?.roe != null) {
-    roeSeries.push({ name: '同业基准', values: roe.map(() => ctx.peerBench!.roe! * 100) });
+    roeSeries.push({ name: '同业基准', values: roe.map(() => ctx.peerBench!.roe! * 100), benchmark: true });
   }
   blocks.push({
     id: 'roe_trend',

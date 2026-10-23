@@ -76,12 +76,28 @@ function verifyOrThrow(dataset: ReportDataset): VerifyIssue[] {
 // 内置快照模式
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * 是否优先返回内置快照：
+ * - 只有年度口径有快照（季度必须走接口）；
+ * - forceLive=true 时跳过（私有 AppId 的显式实时拉取）。
+ * 抽成纯函数便于单测，避免为了验证短路去 mock 整个 WmClient。
+ */
+export function servesBuiltinSnapshot(
+  symbol: string,
+  mode: FetchOptions['mode'] | undefined,
+  forceLive = false,
+): boolean {
+  return Boolean(getSample(symbol)) && (mode ?? 'annual') === 'annual' && !forceLive;
+}
+
 export class SnapshotProvider implements DataProvider {
   kind = 'snapshot' as const;
 
   // 首页卡片：真实白酒三家（M1 收窄）
   async list(): Promise<SymbolBrief[]> {
-    return LIQUOR_SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
+    // 白酒三大家 + 制造排雷对照样例：让免密钥用户也能看到「另一种风格」的财报信号
+    // （多行业架构先行：引擎已按 industry 分流阈值，制造样例走通用标尺）
+    return SAMPLES.map((s) => ({ symbol: s.symbol, name: s.name, industry: s.industry }));
   }
 
   // 含制造业对照样例（分析页下拉可切）
@@ -125,8 +141,8 @@ export class LiveProvider implements DataProvider {
   kind = 'live' as const;
   readonly client: WmClient;
 
-  constructor(creds: NonNullable<ReturnType<typeof toWmCredentials>>) {
-    this.client = new WmClient(creds);
+  constructor(creds: NonNullable<ReturnType<typeof toWmCredentials>>, opts?: { minIntervalMs?: number }) {
+    this.client = new WmClient(creds, opts);
   }
 
   async search(q: string, signal?: AbortSignal): Promise<SymbolBrief[]> {
@@ -184,8 +200,9 @@ export class LiveProvider implements DataProvider {
     const mode = opts.mode ?? 'annual';
     // 内置样本（白酒三家 + 制造对照）只在年度口径下走快照：0 EC、必然可用。
     // 季度口径必须走接口——快照没有季度期次，也没有「切换口径」的意义。
+    // forceLive：私有 AppId 在样板页显式「拉取最新实时数据」时绕过该短路。
     const builtin = getSample(symbol);
-    if (builtin && mode === 'annual') {
+    if (builtin && servesBuiltinSnapshot(symbol, mode, opts.forceLive)) {
       return {
         dataset: builtin,
         kind: 'snapshot',
@@ -313,9 +330,9 @@ export function clearAllCaches(): void {
   }
 }
 
-/** 依据凭证决定用哪种提供方 */
+/** 依据凭证决定用哪种提供方；体验密钥（demo）来源加最小调用间隔，护共享配额 */
 export function createProvider(creds: CredentialState = loadCredentials()): DataProvider {
   const wm = toWmCredentials(creds);
-  if (wm) return new LiveProvider(wm);
+  if (wm) return new LiveProvider(wm, { minIntervalMs: creds.source === 'demo' ? 1500 : 0 });
   return new SnapshotProvider();
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
   label: string;
@@ -7,6 +7,8 @@ const props = defineProps<{
   unit?: string;
   meta?: string;
   spark?: (number | null)[];
+  /** 口径公式（含取数来源表）；悬浮展示并支持一键复制——证据可追溯到公式层 */
+  formula?: string;
 }>();
 
 const points = computed(() => {
@@ -19,11 +21,33 @@ const points = computed(() => {
     .map((v, i) => `${(i / (values.length - 1)) * 100},${21 - ((v - min) / span) * 17}`)
     .join(' ');
 });
+
+const copied = ref(false);
+
+async function copyFormula() {
+  if (!props.formula) return;
+  try {
+    await navigator.clipboard.writeText(props.formula);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1500);
+  } catch {
+    /* 剪贴板不可用（非安全上下文）——用户仍可手动选中复制 */
+  }
+}
 </script>
 
 <template>
   <div class="wb-kpi">
-    <div class="wb-kpi__label">{{ label }}</div>
+    <div class="wb-kpi__label">
+      {{ label }}
+      <span v-if="formula" class="wb-kpi__q" tabindex="0" aria-label="查看口径公式">?</span>
+      <div v-if="formula" class="wb-kpi__formula" role="tooltip">
+        <code>{{ formula }}</code>
+        <button type="button" class="wb-kpi__copy" @click.stop="copyFormula">
+          {{ copied ? '已复制' : '复制公式' }}
+        </button>
+      </div>
+    </div>
     <div class="wb-kpi__value">
       <span>{{ value }}</span>
       <span v-if="unit" class="wb-kpi__unit">{{ unit }}</span>
