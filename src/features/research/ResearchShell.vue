@@ -67,7 +67,12 @@ watch(() => [symbol.value, store.stockList.length], ensure);
           <button :class="{ 'is-on': store.dataMode === 'annual' }" @click="store.switchMode('annual')">年报</button>
           <button :class="{ 'is-on': store.dataMode === 'quarterly' }" @click="store.switchMode('quarterly')">季报</button>
         </div>
-        <button class="wb-btn wb-source-btn" :title="`数据源设置 · ${store.sourceLabel}`" @click="showSettings = true">
+        <button
+          class="wb-btn wb-source-btn"
+          :title="`数据源与 AppId 设置 · ${store.sourceLabel}`"
+          aria-label="数据源与 AppId 设置"
+          @click="showSettings = true"
+        >
           <span class="wb-source-btn__label">数据源</span>
           <span class="wb-source-btn__state">{{ store.sourceShortLabel }}</span>
         </button>
@@ -98,6 +103,11 @@ watch(() => [symbol.value, store.stockList.length], ensure);
           <div>{{ store.sourceLabel }}</div>
           <div v-if="store.peers?.name">{{ store.peers.name }} · {{ store.peers.count ?? 0 }} 家</div>
           <div class="mt-2">
+            <button type="button" class="wb-sidelink" @click="showSettings = true">
+              设置 AppId / 实时数据 →
+            </button>
+          </div>
+          <div class="mt-1">
             <RouterLink to="/method" class="hover:text-brand">方法论与数据来源 →</RouterLink>
           </div>
         </div>

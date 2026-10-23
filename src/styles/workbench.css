@@ -194,6 +194,21 @@ body {
   color: rgb(var(--wb-muted));
 }
 
+/* 侧栏里的文字动作（打开 AppId 设置）：不得继承 UA 按钮外观 */
+.wb-sidelink {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-sidelink:hover {
+  color: rgb(var(--wb-brand));
+}
+
 .wb-mobile-nav {
   display: none;
 }

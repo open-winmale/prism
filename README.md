@@ -56,7 +56,17 @@ npm run lint       # Lint（oxlint）
 
 ## 🔌 连接赢麻了开放平台（获取真实数据）
 
-开源版默认用内置演示数据。若要接入真实财报与行业基准，复制 `.env.example` 为 `.env` 并填入开放平台 AppId：
+### 页面上直接设置（推荐）
+
+打开任意报告后，点顶栏「数据源」或左栏「设置 AppId / 实时数据 →」：
+
+1. 填入开放平台的 **AppId（ClientId）** 与 **Secret（ClientSecret）**；
+2. 点「测试连接」——只向开放平台换取一次访问令牌，不查询财报数据，**0 EC**；
+3. 测试通过后点「保存并使用」。凭证只存本机浏览器，已保存的凭证下次打开会自动回填（Secret 隐藏）。
+
+### 自部署时用环境变量
+
+默认用内置演示数据。若要为整个部署注入凭证，复制 `.env.example` 为 `.env` 并填入：
 
 ```bash
 cp .env.example .env
@@ -69,6 +79,8 @@ VITE_WM_CLIENT_SECRET=你的开放平台ClientSecret
 VITE_WM_API_BASE=https://api.winmale.com
 VITE_PRO_URL=https://winmale.com
 ```
+
+> ⚠️ `VITE_*` 会被打进前端产物，任何访客都能看到；只适合私有部署或本地开发。公开站点请让用户用页面上的「数据源」自行填写。
 
 填入后，数据提供方自动从内置示例切换为 `LiveProvider`；缺失字段（如扣非净利润、分红历史序列）会优雅降级并在界面提示「连接赢麻了专业版补全」。
 

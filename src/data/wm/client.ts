@@ -200,6 +200,9 @@ export function describeError(e: unknown): string {
   }
   if (e instanceof Error) {
     if (e.name === 'AbortError') return '请求已取消';
+    if (e instanceof TypeError && /fetch|network/i.test(e.message)) {
+      return '无法连接开放平台，请检查网络或 API 地址后重试';
+    }
     return e.message || '未知错误';
   }
   return '未知错误';
